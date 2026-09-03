@@ -76,6 +76,7 @@ if ($FrameworkDependent) {
     $publishArguments += '--self-contained'
     $publishArguments += 'true'
     $publishArguments += '-p:IncludeNativeLibrariesForSelfExtract=true'
+    $publishArguments += '-p:EnableCompressionInSingleFile=true'
 }
 
 & dotnet @publishArguments

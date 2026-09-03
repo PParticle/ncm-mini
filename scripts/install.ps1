@@ -63,6 +63,10 @@ $controller = Join-Path $InstallDirectory 'NCMMiniBandCtl.exe'
 
 $programs = [Environment]::GetFolderPath('Programs')
 $shortcutPath = Join-Path $programs 'NCM Mini.lnk'
+$hostArguments = @()
+if ($CloudMusicPath) {
+    $hostArguments = @('--cloudmusic', $CloudMusicPath)
+}
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($shortcutPath)
 $shortcut.TargetPath = Join-Path $InstallDirectory 'NCMMini.exe'
@@ -73,11 +77,7 @@ if ($CloudMusicPath) {
 $shortcut.Save()
 
 if (-not $NoStart) {
-    $arguments = @()
-    if ($CloudMusicPath) {
-        $arguments = @('--cloudmusic', $CloudMusicPath)
-    }
-    Start-Process (Join-Path $InstallDirectory 'NCMMini.exe') -ArgumentList $arguments
+    Start-Process (Join-Path $InstallDirectory 'NCMMini.exe') -ArgumentList $hostArguments
     Start-Sleep -Seconds 2
     & $controller status 2>$null | Out-Null
     if ($LASTEXITCODE -ne 0) {
@@ -90,6 +90,9 @@ if (-not $NoStart) {
             Start-Process explorer.exe
             Start-Sleep -Seconds 3
             & $controller show 2>$null | Out-Null
+            if (-not (Get-Process NCMMini -ErrorAction SilentlyContinue)) {
+                Start-Process (Join-Path $InstallDirectory 'NCMMini.exe') -ArgumentList $hostArguments
+            }
         }
     }
 }
