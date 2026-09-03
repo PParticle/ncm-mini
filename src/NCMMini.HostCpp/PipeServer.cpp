@@ -3,6 +3,7 @@
 #include "../NCMMini.Band/Protocol.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 
 namespace ncmmini
@@ -73,7 +74,6 @@ void PipeServer::Stop()
     {
         DisconnectNamedPipe(pipe);
     }
-    CancelSynchronousIo(reinterpret_cast<HANDLE>(worker_.native_handle()));
     HANDLE wake = CreateFileW(ncmmini::PipeName, GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
     if (wake != INVALID_HANDLE_VALUE)
     {
@@ -135,8 +135,22 @@ void PipeServer::Run()
         WriteState(pipe, current);
 
         ncmmini::CommandPacket packet{};
-        while (!stopping_ && ReadAll(pipe, &packet, sizeof(packet)))
+        while (!stopping_)
         {
+            DWORD available = 0;
+            if (!PeekNamedPipe(pipe, nullptr, 0, nullptr, &available, nullptr))
+            {
+                break;
+            }
+            if (available < sizeof(packet))
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(25));
+                continue;
+            }
+            if (!ReadAll(pipe, &packet, sizeof(packet)))
+            {
+                break;
+            }
             if (packet.magic != ncmmini::ProtocolMagic || packet.version != ncmmini::ProtocolVersion
                 || packet.message != ncmmini::CommandMessage)
             {
@@ -154,7 +168,6 @@ void PipeServer::Run()
             std::lock_guard lock(connectionMutex_);
             if (connection_ == pipe) connection_ = INVALID_HANDLE_VALUE;
         }
-        FlushFileBuffers(pipe);
         DisconnectNamedPipe(pipe);
         CloseHandle(pipe);
     }

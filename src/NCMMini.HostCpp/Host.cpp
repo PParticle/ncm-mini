@@ -316,7 +316,10 @@ PlayerSnapshot PlayerController::ReadSnapshot() const
     }
     if (mainWindow == nullptr)
     {
-        return {};
+        PlayerSnapshot starting;
+        starting.running = true;
+        starting.processId = *processIds.begin();
+        return starting;
     }
 
     const WindowInfo* titleWindow = nullptr;
@@ -386,7 +389,10 @@ void PlayerController::Close()
     {
         return;
     }
-    PostMessageW(snapshot.mainWindow, WM_CLOSE, 0, 0);
+    if (snapshot.mainWindow != nullptr)
+    {
+        PostMessageW(snapshot.mainWindow, WM_CLOSE, 0, 0);
+    }
     for (int attempt = 0; attempt < 30; ++attempt)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
