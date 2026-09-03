@@ -64,10 +64,23 @@ if ([string]::IsNullOrWhiteSpace($CloudMusicPath)) {
     $CloudMusicPath = Find-CloudMusicPath
     if ($CloudMusicPath) {
         Write-Host "Detected CloudMusic: $CloudMusicPath"
-    } else {
-        Write-Warning 'cloudmusic.exe was not found. NCM Mini will try its built-in paths when started.'
     }
 }
+
+$cloudMusicIsValid = -not [string]::IsNullOrWhiteSpace($CloudMusicPath) `
+    -and ([System.IO.Path]::GetFileName($CloudMusicPath) -ieq 'cloudmusic.exe') `
+    -and (Test-Path $CloudMusicPath -PathType Leaf)
+if (-not $cloudMusicIsValid) {
+    $message = "未找到网易云音乐（cloudmusic.exe）。`r`n`r`n请先安装网易云音乐，或在 PowerShell 中使用 -CloudMusicPath 指定其完整路径。"
+    try {
+        $shell = New-Object -ComObject WScript.Shell
+        [void]$shell.Popup($message, 0, 'NCM Mini 安装', 0x10)
+    } catch {
+        Write-Warning $message
+    }
+    throw $message
+}
+$CloudMusicPath = (Resolve-Path $CloudMusicPath).Path
 
 $source = $PSScriptRoot
 if (-not (Test-Path (Join-Path $source 'NCMMini.exe'))) {
