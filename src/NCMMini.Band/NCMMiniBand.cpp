@@ -525,14 +525,10 @@ private:
     void DrawButton(HDC device, const RECT& rectangle, int index, bool enabled) const
     {
         const auto active = enabled && hoverButton_ == index;
-        if (active)
-        {
-            HBRUSH brush = CreateSolidBrush(RGB(62, 63, 68));
-            FillRect(device, &rectangle, brush);
-            DeleteObject(brush);
-        }
-        const auto color = enabled ? RGB(235, 235, 238) : RGB(105, 105, 108);
-        HPEN pen = CreatePen(PS_SOLID, 2, color);
+        const auto color = !enabled
+            ? RGB(105, 105, 108)
+            : active ? RGB(255, 255, 255) : RGB(190, 191, 195);
+        HPEN pen = CreatePen(PS_SOLID, 1, color);
         HBRUSH iconBrush = CreateSolidBrush(color);
         const auto oldPen = SelectObject(device, pen);
         const auto oldBrush = SelectObject(device, iconBrush);
@@ -542,30 +538,29 @@ private:
         if (index == 0 || index == 2)
         {
             const auto direction = index == 0 ? -1 : 1;
-            const auto barX = centerX + direction * 8;
-            MoveToEx(device, barX, centerY - 7, nullptr);
+            const auto barX = centerX + direction * 6;
+            MoveToEx(device, barX, centerY - 6, nullptr);
             LineTo(device, barX, centerY + 7);
-            POINT first[] = {
-                { centerX + direction * 6, centerY },
-                { centerX - direction * 1, centerY - 7 },
-                { centerX - direction * 1, centerY + 7 }
+            POINT triangle[] = {
+                { centerX + direction * 4, centerY },
+                { centerX - direction * 4, centerY - 6 },
+                { centerX - direction * 4, centerY + 6 }
             };
-            Polygon(device, first, 3);
-            POINT second[] = {
-                { centerX - direction * 1, centerY },
-                { centerX - direction * 8, centerY - 7 },
-                { centerX - direction * 8, centerY + 7 }
-            };
-            Polygon(device, second, 3);
+            Polygon(device, triangle, 3);
         }
         else
         {
-            Rectangle(device, centerX - 8, centerY - 7, centerX - 5, centerY + 7);
-            Rectangle(device, centerX - 3, centerY - 7, centerX, centerY + 7);
+            SelectObject(device, GetStockObject(HOLLOW_BRUSH));
+            Ellipse(device, centerX - 12, centerY - 12, centerX + 13, centerY + 13);
+            SelectObject(device, iconBrush);
+            RECT firstBar{ centerX - 6, centerY - 5, centerX - 4, centerY + 6 };
+            RECT secondBar{ centerX - 2, centerY - 5, centerX, centerY + 6 };
+            FillRect(device, &firstBar, iconBrush);
+            FillRect(device, &secondBar, iconBrush);
             POINT triangle[] = {
-                { centerX + 3, centerY - 7 },
-                { centerX + 10, centerY },
-                { centerX + 3, centerY + 7 }
+                { centerX + 2, centerY - 5 },
+                { centerX + 8, centerY },
+                { centerX + 2, centerY + 5 }
             };
             Polygon(device, triangle, 3);
         }
