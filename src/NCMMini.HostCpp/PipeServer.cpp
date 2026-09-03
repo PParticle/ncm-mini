@@ -73,6 +73,7 @@ void PipeServer::Stop()
     {
         DisconnectNamedPipe(pipe);
     }
+    CancelSynchronousIo(static_cast<HANDLE>(worker_.native_handle()));
     HANDLE wake = CreateFileW(ncmmini::PipeName, GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
     if (wake != INVALID_HANDLE_VALUE)
     {
