@@ -52,7 +52,8 @@ enum class BandCommand : std::uint32_t
     Previous = 1,
     PlayPause = 2,
     Next = 3,
-    Exit = 4
+    Exit = 4,
+    Options = 5
 };
 
 AppOptions ParseOptions(int argumentCount, wchar_t** arguments);

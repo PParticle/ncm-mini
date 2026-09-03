@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "Protocol.h"
+#include "../Common/Settings.h"
 
 static HMODULE moduleHandle = nullptr;
 static std::atomic_long serverLocks{0};
@@ -33,10 +34,10 @@ static const CLSID CLSID_NCMMiniDeskBand =
 
 static constexpr wchar_t ClsidText[] = L"{9C941A4D-D554-4012-88E0-9531D6B880BA}";
 static constexpr wchar_t DeskBandCategoryText[] = L"{00021492-0000-0000-C000-000000000046}";
-static constexpr wchar_t WindowClassName[] = L"NCMMini.DeskBand.Window.1";
 static constexpr UINT StateMessageId = WM_APP + 41;
 static constexpr UINT ConnectionMessageId = WM_APP + 42;
-static constexpr UINT ExitMenuId = 1001;
+static constexpr UINT OptionsMenuId = 1001;
+static constexpr UINT ExitMenuId = 1002;
 static constexpr std::size_t CoverByteCount = 40 * 40 * 4;
 
 struct PlayerState
@@ -242,10 +243,11 @@ public:
         }
 
         InitOnceExecuteOnce(&windowClassOnce, RegisterWindowClass, nullptr, nullptr);
+        settings_ = ncmmini::LoadSettings(ncmmini::SettingsPath(moduleHandle));
         CreateFonts(parent);
         window_ = CreateWindowExW(
             0,
-            WindowClassName,
+            ncmmini::BandWindowClassName,
             L"NCM Mini",
             WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
             0,
@@ -333,7 +335,7 @@ private:
         windowClass.lpfnWndProc = WindowProcedure;
         windowClass.hInstance = moduleHandle;
         windowClass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-        windowClass.lpszClassName = WindowClassName;
+        windowClass.lpszClassName = ncmmini::BandWindowClassName;
         return RegisterClassExW(&windowClass) != 0 || GetLastError() == ERROR_CLASS_ALREADY_EXISTS;
     }
 
@@ -396,6 +398,11 @@ private:
             connected_ = wParam != 0;
             InvalidateRect(window, nullptr, FALSE);
             return 0;
+        case ncmmini::ReloadSettingsMessageId:
+            settings_ = ncmmini::LoadSettings(ncmmini::SettingsPath(moduleHandle));
+            CreateFonts(window);
+            InvalidateRect(window, nullptr, FALSE);
+            return 0;
         }
         return DefWindowProcW(window, message, wParam, lParam);
     }
@@ -407,10 +414,12 @@ private:
         HDC device = GetDC(parent);
         const auto dpi = GetDeviceCaps(device, LOGPIXELSY);
         ReleaseDC(parent, device);
-        titleFont_ = CreateFontW(-MulDiv(9, dpi, 72), 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI");
-        detailFont_ = CreateFontW(-MulDiv(8, dpi, 72), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI");
+        titleFont_ = CreateFontW(-MulDiv(settings_.titleFont.pointSize, dpi, 72), 0, 0, 0,
+            settings_.titleFont.weight, settings_.titleFont.italic, FALSE, FALSE, DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, settings_.titleFont.name.c_str());
+        detailFont_ = CreateFontW(-MulDiv(settings_.detailFont.pointSize, dpi, 72), 0, 0, 0,
+            settings_.detailFont.weight, settings_.detailFont.italic, FALSE, FALSE, DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, settings_.detailFont.name.c_str());
     }
 
     void Paint(HWND window)
@@ -438,12 +447,15 @@ private:
             state = state_;
         }
 
-        const auto inset = 2;
+        const auto inset = settings_.coverInset;
         const auto coverSize = std::max(1L, std::min(40L, height - inset * 2));
         RECT coverRect{ inset, (height - coverSize) / 2, inset + coverSize, (height + coverSize) / 2 };
-        DrawCover(buffer, coverRect, state.cover);
+        if (settings_.showCover)
+        {
+            DrawCover(buffer, coverRect, state.cover);
+        }
 
-        const auto buttonSize = std::max(1L, std::min(32L, height - inset * 2));
+        const auto buttonSize = std::max(1L, std::min(static_cast<LONG>(settings_.buttonSize), height));
         const auto buttonsWidth = buttonSize * 3;
         const auto buttonTop = (height - buttonSize) / 2;
         for (int index = 0; index < 3; ++index)
@@ -457,17 +469,18 @@ private:
             DrawButton(buffer, buttonRects_[index], index, state.running);
         }
 
-        RECT textRect{ coverRect.right + 7, 1, width - buttonsWidth - 6, height - 1 };
+        const auto textLeft = settings_.showCover ? coverRect.right + 7 : 5L;
+        RECT textRect{ textLeft, 1, width - buttonsWidth - 6, height - 1 };
         if (textRect.right > textRect.left)
         {
             const auto middle = textRect.top + (textRect.bottom - textRect.top) / 2;
             RECT titleRect{ textRect.left, textRect.top, textRect.right, middle + 1 };
             RECT detailRect{ textRect.left, middle - 1, textRect.right, textRect.bottom };
             SetBkMode(buffer, TRANSPARENT);
-            SetTextColor(buffer, state.running ? RGB(242, 242, 244) : RGB(185, 185, 188));
+            SetTextColor(buffer, state.running ? settings_.titleColor : RGB(185, 185, 188));
             SelectObject(buffer, titleFont_);
             DrawTextW(buffer, state.title.c_str(), -1, &titleRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
-            SetTextColor(buffer, state.lyric.empty() ? RGB(178, 179, 184) : RGB(126, 211, 174));
+            SetTextColor(buffer, state.lyric.empty() ? settings_.artistColor : settings_.lyricColor);
             SelectObject(buffer, detailFont_);
             const auto& detail = state.lyric.empty() ? state.artist : state.lyric;
             DrawTextW(buffer, detail.c_str(), -1, &detailRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
@@ -527,7 +540,7 @@ private:
         const auto active = enabled && hoverButton_ == index;
         const auto color = !enabled
             ? RGB(105, 105, 108)
-            : active ? RGB(255, 255, 255) : RGB(190, 191, 195);
+            : active ? settings_.buttonHoverColor : settings_.buttonColor;
         HPEN pen = CreatePen(PS_SOLID, 1, color);
         HBRUSH iconBrush = CreateSolidBrush(color);
         const auto oldPen = SelectObject(device, pen);
@@ -623,11 +636,17 @@ private:
         POINT location{ x, y };
         ClientToScreen(window, &location);
         HMENU menu = CreatePopupMenu();
-        AppendMenuW(menu, MF_STRING, ExitMenuId, L"\u9000\u51fa NCM Mini");
+        AppendMenuW(menu, MF_STRING, OptionsMenuId, L"\u9009\u9879(&o)");
+        AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+        AppendMenuW(menu, MF_STRING, ExitMenuId, L"\u9000\u51fa(&q)");
         const auto selection = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_NONOTIFY,
             location.x, location.y, 0, window, nullptr);
         DestroyMenu(menu);
-        if (selection == ExitMenuId)
+        if (selection == OptionsMenuId)
+        {
+            QueueCommand(ncmmini::Command::Options);
+        }
+        else if (selection == ExitMenuId)
         {
             QueueCommand(ncmmini::Command::Exit);
         }
@@ -783,6 +802,7 @@ private:
     HWND window_ = nullptr;
     HFONT titleFont_ = nullptr;
     HFONT detailFont_ = nullptr;
+    ncmmini::AppSettings settings_;
     RECT buttonRects_[3]{};
     bool mouseTracking_ = false;
     int hoverButton_ = -1;

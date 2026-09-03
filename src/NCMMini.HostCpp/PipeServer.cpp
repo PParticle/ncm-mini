@@ -159,7 +159,8 @@ void PipeServer::Run()
             }
             const auto command = static_cast<BandCommand>(packet.command);
             if (command == BandCommand::Previous || command == BandCommand::PlayPause
-                || command == BandCommand::Next || command == BandCommand::Exit)
+                || command == BandCommand::Next || command == BandCommand::Exit
+                || command == BandCommand::Options)
             {
                 handler_(command);
             }

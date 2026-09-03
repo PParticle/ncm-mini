@@ -1,6 +1,7 @@
 #include "Host.h"
 #include "Media.h"
 #include "PipeServer.h"
+#include "SettingsWindow.h"
 
 #include <objbase.h>
 #include <shellapi.h>
@@ -14,12 +15,25 @@ namespace ncmmini
 class Application
 {
 public:
-    explicit Application(AppOptions options) : options_(std::move(options)), player_(options_)
+    explicit Application(AppOptions options)
+        : options_(std::move(options)), player_(options_), settingsPath_(SettingsPath()),
+          settings_(LoadSettings(settingsPath_)),
+          settingsWindow_(settingsPath_, [this](const AppSettings& settings) { UpdateSettings(settings); })
     {
+        if (!options_.showLyrics) settings_.showLyrics = false;
+        if (!options_.closeCloudMusicOnExit) settings_.closeCloudMusicOnExit = false;
     }
 
     int Run()
     {
+        if (GetFileAttributesW(settingsPath_.c_str()) == INVALID_FILE_ATTRIBUTES)
+        {
+            SaveSettings(settingsPath_, settings_);
+        }
+        if (!settingsWindow_.Start())
+        {
+            Log(L"Settings window could not be initialized");
+        }
         PipeServer pipe([this](BandCommand command) { HandleCommand(command); });
         pipe.Start();
         RunBandController(L"show");
@@ -40,9 +54,19 @@ public:
         auto coverRetryAt = trackStarted;
         unsigned int coverRetryCount = 0;
         bool disconnectedPublished = false;
+        auto observedSettingsVersion = settingsVersion_.load();
 
         while (!shutdown_)
         {
+            const auto currentSettingsVersion = settingsVersion_.load();
+            const auto settings = CurrentSettings();
+            if (currentSettingsVersion != observedSettingsVersion)
+            {
+                observedSettingsVersion = currentSettingsVersion;
+                previousTitle.clear();
+                publishedTitle.clear();
+                previousLyric.clear();
+            }
             const auto snapshot = player_.ReadSnapshot();
             processId_ = snapshot.processId;
             if (!snapshot.running)
@@ -69,7 +93,7 @@ public:
                 track = catalog_.Find(snapshot.windowTitle);
                 if (track.name.empty()) track = snapshot.track;
                 trackStarted = std::chrono::steady_clock::now();
-                lyrics = options_.showLyrics ? lyricsStore_.Find(track) : std::vector<LyricLine>{};
+                lyrics = settings.showLyrics ? lyricsStore_.Find(track) : std::vector<LyricLine>{};
                 cover = LoadCover(track.coverUrl);
                 coverRetryCount = 0;
                 coverRetryAt = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
@@ -90,7 +114,7 @@ public:
                     const bool metadataChanged = refreshed.coverUrl != track.coverUrl
                         || refreshed.trackId != track.trackId || refreshed.lyricsId != track.lyricsId;
                     track = refreshed;
-                    if (metadataChanged && options_.showLyrics)
+                    if (metadataChanged && settings.showLyrics)
                     {
                         lyrics = lyricsStore_.Find(track);
                     }
@@ -107,7 +131,7 @@ public:
 
             const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - trackStarted);
-            const auto lyric = options_.showLyrics ? LyricsStore::Current(lyrics, elapsed) : std::wstring();
+            const auto lyric = settings.showLyrics ? LyricsStore::Current(lyrics, elapsed) : std::wstring();
             if (stateChanged || lyric != previousLyric || snapshot.windowTitle != publishedTitle)
             {
                 previousLyric = lyric;
@@ -120,10 +144,11 @@ public:
                     cover
                 });
             }
-            Wait(std::chrono::milliseconds(100));
+            Wait(std::chrono::milliseconds(settings.refreshIntervalMs));
         }
 
-        if (options_.closeCloudMusicOnExit)
+        settingsWindow_.Stop();
+        if (CurrentSettings().closeCloudMusicOnExit)
         {
             player_.Close();
         }
@@ -135,6 +160,11 @@ public:
 private:
     void HandleCommand(BandCommand command)
     {
+        if (command == BandCommand::Options)
+        {
+            settingsWindow_.Show();
+            return;
+        }
         if (command == BandCommand::Exit)
         {
             shutdown_ = true;
@@ -156,12 +186,32 @@ private:
         }
     }
 
+    AppSettings CurrentSettings() const
+    {
+        std::lock_guard lock(settingsMutex_);
+        return settings_;
+    }
+
+    void UpdateSettings(const AppSettings& settings)
+    {
+        {
+            std::lock_guard lock(settingsMutex_);
+            settings_ = settings;
+        }
+        ++settingsVersion_;
+    }
+
     AppOptions options_;
     PlayerController player_;
+    std::wstring settingsPath_;
+    mutable std::mutex settingsMutex_;
+    AppSettings settings_;
+    SettingsWindow settingsWindow_;
     TrackCatalog catalog_;
     LyricsStore lyricsStore_;
     std::atomic_bool shutdown_{false};
     std::atomic<DWORD> processId_{0};
+    std::atomic<std::uint64_t> settingsVersion_{0};
 };
 }
 

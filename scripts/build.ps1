@@ -10,6 +10,7 @@ $output = Join-Path $root 'artifacts\publish'
 $staging = Join-Path $root 'artifacts\publish.new'
 $bandSource = Join-Path $root 'src\NCMMini.Band'
 $hostSource = Join-Path $root 'src\NCMMini.HostCpp'
+$commonSource = Join-Path $root 'src\Common'
 
 Get-Process NCMMini -ErrorAction SilentlyContinue | Stop-Process -Force
 foreach ($controller in @(
@@ -47,7 +48,7 @@ $bandLibraries = @(
     '-luxtheme'
 )
 
-& $compiler.Source '-shared' (Join-Path $bandSource 'NCMMiniBand.cpp') '-o' (Join-Path $staging 'NCMMiniBand.dll') @commonFlags @bandLibraries
+& $compiler.Source '-shared' (Join-Path $bandSource 'NCMMiniBand.cpp') (Join-Path $commonSource 'Settings.cpp') '-o' (Join-Path $staging 'NCMMiniBand.dll') @commonFlags @bandLibraries
 if ($LASTEXITCODE -ne 0) { throw "DeskBand compilation failed with exit code $LASTEXITCODE." }
 
 & $compiler.Source '-municode' (Join-Path $bandSource 'NCMMiniBandCtl.cpp') '-o' (Join-Path $staging 'NCMMiniBandCtl.exe') @commonFlags @bandLibraries
@@ -58,9 +59,11 @@ $hostSources = @(
     (Join-Path $hostSource 'Host.cpp'),
     (Join-Path $hostSource 'Json.cpp'),
     (Join-Path $hostSource 'Media.cpp'),
-    (Join-Path $hostSource 'PipeServer.cpp')
+    (Join-Path $hostSource 'PipeServer.cpp'),
+    (Join-Path $hostSource 'SettingsWindow.cpp'),
+    (Join-Path $commonSource 'Settings.cpp')
 )
-$hostLibraries = @('-lole32', '-luuid', '-luser32', '-lshell32', '-lwinhttp', '-lwindowscodecs')
+$hostLibraries = @('-lole32', '-luuid', '-luser32', '-lgdi32', '-lcomdlg32', '-lshell32', '-lwinhttp', '-lwindowscodecs')
 & $compiler.Source '-municode' '-mwindows' @hostSources '-o' (Join-Path $staging 'NCMMini.exe') @commonFlags @hostLibraries
 if ($LASTEXITCODE -ne 0) { throw "Native host compilation failed with exit code $LASTEXITCODE." }
 
@@ -70,6 +73,7 @@ if ($Configuration -eq 'Release') {
 
 Copy-Item (Join-Path $PSScriptRoot 'install.ps1') $staging
 Copy-Item (Join-Path $PSScriptRoot 'uninstall.ps1') $staging
+Copy-Item (Join-Path $PSScriptRoot 'config.ini') $staging
 $restartExplorer = $false
 if (Test-Path $output) {
     try {

@@ -17,7 +17,8 @@ enum class Command : std::uint32_t
     Previous = 1,
     PlayPause = 2,
     Next = 3,
-    Exit = 4
+    Exit = 4,
+    Options = 5
 };
 
 #pragma pack(push, 1)
@@ -42,4 +43,3 @@ struct CommandPacket
 };
 #pragma pack(pop)
 }
-

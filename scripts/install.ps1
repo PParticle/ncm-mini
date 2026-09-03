@@ -89,7 +89,7 @@ if (-not (Test-Path (Join-Path $source 'NCMMini.exe'))) {
         $source = (Resolve-Path $candidate).Path
     }
 }
-$requiredFiles = @('NCMMini.exe', 'NCMMiniBand.dll', 'NCMMiniBandCtl.exe', 'uninstall.ps1')
+$requiredFiles = @('NCMMini.exe', 'NCMMiniBand.dll', 'NCMMiniBandCtl.exe', 'uninstall.ps1', 'config.ini')
 foreach ($file in $requiredFiles) {
     if (-not (Test-Path (Join-Path $source $file))) {
         throw "Missing build artifact: $file. Run scripts\build.ps1 first."
@@ -111,6 +111,9 @@ try {
     foreach ($file in $requiredFiles) {
         $sourcePath = Join-Path $source $file
         $targetPath = Join-Path $InstallDirectory $file
+        if ($file -eq 'config.ini' -and (Test-Path $targetPath)) {
+            continue
+        }
         $existingTarget = Resolve-Path $targetPath -ErrorAction SilentlyContinue
         if (-not $existingTarget -or (Resolve-Path $sourcePath).Path -ne $existingTarget.Path) {
             Copy-Item $sourcePath $targetPath -Force -ErrorAction Stop
@@ -121,6 +124,9 @@ try {
     Get-Process explorer -ErrorAction SilentlyContinue | Stop-Process -Force
     Start-Sleep -Seconds 1
     foreach ($file in $requiredFiles) {
+        if ($file -eq 'config.ini' -and (Test-Path (Join-Path $InstallDirectory $file))) {
+            continue
+        }
         Copy-Item (Join-Path $source $file) (Join-Path $InstallDirectory $file) -Force
     }
     Start-Process explorer.exe
