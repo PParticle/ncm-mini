@@ -11,6 +11,11 @@ $output = Join-Path $root 'artifacts\publish'
 $bandSource = Join-Path $root 'src\NCMMini.Band'
 $hostProject = Join-Path $root 'src\NCMMini.Host\NCMMini.Host.csproj'
 
+Get-Process NCMMini -ErrorAction SilentlyContinue | Stop-Process -Force
+if (Test-Path (Join-Path $output 'NCMMiniBandCtl.exe')) {
+    & (Join-Path $output 'NCMMiniBandCtl.exe') hide 2>$null | Out-Null
+    Start-Sleep -Milliseconds 300
+}
 Remove-Item $output -Recurse -Force -ErrorAction SilentlyContinue
 New-Item $output -ItemType Directory -Force | Out-Null
 
@@ -65,4 +70,3 @@ if ($LASTEXITCODE -ne 0) { throw "Host publication failed with exit code $LASTEX
 Copy-Item (Join-Path $PSScriptRoot 'install.ps1') $output
 Copy-Item (Join-Path $PSScriptRoot 'uninstall.ps1') $output
 Write-Host "NCM Mini build output: $output"
-
