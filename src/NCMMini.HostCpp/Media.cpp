@@ -202,6 +202,47 @@ std::wstring Normalize(const std::wstring& value)
     return result;
 }
 
+TrackInfo SelectTrack(const std::vector<TrackInfo>& tracks, const std::wstring& parsedName, const std::wstring& parsedArtist)
+{
+    const auto name = Normalize(parsedName);
+    const auto artist = Normalize(parsedArtist);
+    const TrackInfo* best = nullptr;
+    int bestScore = -1;
+    for (const auto& track : tracks)
+    {
+        if (Normalize(track.name) != name)
+        {
+            continue;
+        }
+        const int score = !artist.empty() && Normalize(track.artist).find(artist) != std::wstring::npos ? 1 : 0;
+        if (score > bestScore)
+        {
+            best = &track;
+            bestScore = score;
+        }
+    }
+    return best == nullptr ? TrackInfo{} : *best;
+}
+
+TrackInfo FindTrackInFile(const std::filesystem::path& path, const std::wstring& parsedName, const std::wstring& parsedArtist)
+{
+    std::string text;
+    JsonValue root;
+    if (!ReadFile(path, text) || !ParseJson(text, root))
+    {
+        return {};
+    }
+    std::map<std::wstring, TrackInfo> found;
+    VisitTracks(root, found);
+    std::vector<TrackInfo> tracks;
+    tracks.reserve(found.size());
+    for (auto& [key, track] : found)
+    {
+        tracks.push_back(std::move(track));
+    }
+    return SelectTrack(tracks, parsedName, parsedArtist);
+}
+
 bool ContainsCaseInsensitive(const std::wstring& text, const std::wstring& fragment)
 {
     return Normalize(text).find(Normalize(fragment)) != std::wstring::npos;
@@ -340,25 +381,23 @@ TrackInfo TrackCatalog::Find(const std::wstring& title, bool forceReload)
     {
         return {};
     }
-    EnsureLoaded(forceReload);
-    const auto name = Normalize(parsedName);
-    const auto artist = Normalize(parsedArtist);
-    const TrackInfo* best = nullptr;
-    int bestScore = -1;
-    for (const auto& track : tracks_)
+    auto queued = FindTrackInFile(dataDirectory_ / L"queue", parsedName, parsedArtist);
+    if (!queued.name.empty())
     {
-        if (Normalize(track.name) != name)
-        {
-            continue;
-        }
-        const int score = !artist.empty() && ContainsCaseInsensitive(track.artist, artist) ? 1 : 0;
-        if (score > bestScore)
-        {
-            best = &track;
-            bestScore = score;
-        }
+        return queued;
     }
-    return best == nullptr ? TrackInfo{} : *best;
+    EnsureLoaded(forceReload);
+    return SelectTrack(tracks_, parsedName, parsedArtist);
+}
+
+TrackInfo TrackCatalog::FindQueued(const std::wstring& title) const
+{
+    const auto [parsedName, parsedArtist] = ParsePlayerTitle(title);
+    if (Trim(parsedName).empty())
+    {
+        return {};
+    }
+    return FindTrackInFile(dataDirectory_ / L"queue", parsedName, parsedArtist);
 }
 
 void TrackCatalog::EnsureLoaded(bool forceReload)

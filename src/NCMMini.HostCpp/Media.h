@@ -19,6 +19,7 @@ class TrackCatalog
 {
 public:
     TrackInfo Find(const std::wstring& title, bool forceReload = false);
+    TrackInfo FindQueued(const std::wstring& title) const;
 
 private:
     void EnsureLoaded(bool forceReload);
