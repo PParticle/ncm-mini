@@ -9,6 +9,6 @@
     <AssemblyName>NCMMini</AssemblyName>
     <RootNamespace>NCMMini</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>
 </Project>
-

@@ -22,7 +22,10 @@ internal sealed class HostApplication
         var pipeTask = pipe.RunAsync(linked.Token);
         DeskBandController.Run("show");
 
-        var launchAttempted = !_options.LaunchCloudMusic || _player.TryLaunch();
+        if (_options.LaunchCloudMusic)
+        {
+            _player.TryLaunch();
+        }
         var launchDeadline = DateTime.UtcNow.AddSeconds(20);
         var playerSeen = false;
         string previousTitle = string.Empty;
@@ -42,7 +45,7 @@ internal sealed class HostApplication
                 if (!snapshot.IsRunning)
                 {
                     await pipe.PublishAsync(BandState.Disconnected, linked.Token);
-                    if (playerSeen || launchAttempted && DateTime.UtcNow >= launchDeadline)
+                    if (playerSeen || _options.LaunchCloudMusic && DateTime.UtcNow >= launchDeadline)
                     {
                         break;
                     }

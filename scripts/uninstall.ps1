@@ -8,7 +8,7 @@ Get-Process NCMMini -ErrorAction SilentlyContinue | Stop-Process -Force
 
 $controller = Join-Path $InstallDirectory 'NCMMiniBandCtl.exe'
 if (Test-Path $controller) {
-    & $controller hide | Out-Null
+    & $controller hide 2>$null | Out-Null
 }
 
 $dll = Join-Path $InstallDirectory 'NCMMiniBand.dll'

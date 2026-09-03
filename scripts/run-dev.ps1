@@ -12,5 +12,5 @@ if (-not (Test-Path (Join-Path $publish 'NCMMini.exe'))) {
 
 $dll = Join-Path $publish 'NCMMiniBand.dll'
 Start-Process "$env:SystemRoot\System32\regsvr32.exe" -ArgumentList @('/s', "`"$dll`"") -Wait | Out-Null
-& (Join-Path $publish 'NCMMiniBandCtl.exe') refresh | Out-Null
+& (Join-Path $publish 'NCMMiniBandCtl.exe') refresh 2>$null | Out-Null
 Start-Process (Join-Path $publish 'NCMMini.exe') -ArgumentList @('--cloudmusic', $CloudMusicPath)

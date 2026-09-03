@@ -39,24 +39,20 @@ int wmain(int argumentCount, wchar_t** arguments)
 
     ITrayDeskBand* tray = nullptr;
     auto result = CoCreateInstance(CLSID_TrayDeskBand, nullptr, CLSCTX_LOCAL_SERVER, IID_PPV_ARGS(&tray));
-    std::fwprintf(stderr, L"CoCreateInstance=0x%08lX\n", static_cast<unsigned long>(result));
     if (SUCCEEDED(result))
     {
         if (_wcsicmp(arguments[1], L"show") == 0)
         {
             tray->DeskBandRegistrationChanged();
             result = tray->IsDeskBandShown(CLSID_NCMMiniDeskBand);
-            std::fwprintf(stderr, L"IsDeskBandShown=0x%08lX\n", static_cast<unsigned long>(result));
             if (result != S_OK)
             {
                 result = tray->ShowDeskBand(CLSID_NCMMiniDeskBand);
-                std::fwprintf(stderr, L"ShowDeskBand=0x%08lX\n", static_cast<unsigned long>(result));
             }
         }
         else if (_wcsicmp(arguments[1], L"hide") == 0)
         {
             result = tray->IsDeskBandShown(CLSID_NCMMiniDeskBand);
-            std::fwprintf(stderr, L"IsDeskBandShown=0x%08lX\n", static_cast<unsigned long>(result));
             if (result == S_OK)
             {
                 result = tray->HideDeskBand(CLSID_NCMMiniDeskBand);
@@ -82,5 +78,9 @@ int wmain(int argumentCount, wchar_t** arguments)
         tray->Release();
     }
     CoUninitialize();
+    if (_wcsicmp(arguments[1], L"status") == 0)
+    {
+        return result == S_OK ? 0 : 1;
+    }
     return SUCCEEDED(result) ? 0 : 1;
 }

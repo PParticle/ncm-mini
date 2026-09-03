@@ -664,7 +664,8 @@ private:
             HANDLE pipe = CreateFileW(ncmmini::PipeName, GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
             if (pipe == INVALID_HANDLE_VALUE)
             {
-                WaitNamedPipeW(ncmmini::PipeName, 250);
+                std::unique_lock lock(commandMutex_);
+                workerWake_.wait_for(lock, std::chrono::milliseconds(250), [this] { return stopWorker_.load(); });
                 continue;
             }
             PostConnection(true);
@@ -887,6 +888,7 @@ extern "C" HRESULT __declspec(dllexport) WINAPI DllRegisterServer()
 
     wchar_t clsidPath[160]{};
     StringCchPrintfW(clsidPath, ARRAYSIZE(clsidPath), L"Software\\Classes\\CLSID\\%s", ClsidText);
+    RegDeleteTreeW(HKEY_CURRENT_USER, clsidPath);
     auto result = SetStringValue(HKEY_CURRENT_USER, clsidPath, nullptr, L"NCM Mini DeskBand");
     if (FAILED(result))
     {

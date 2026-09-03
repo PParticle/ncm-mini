@@ -2,7 +2,8 @@
 param(
     [string]$CloudMusicPath,
     [string]$InstallDirectory = (Join-Path $env:LOCALAPPDATA 'NCM Mini'),
-    [switch]$NoStart
+    [switch]$NoStart,
+    [switch]$NoExplorerRestart
 )
 
 $ErrorActionPreference = 'Stop'
@@ -43,7 +44,7 @@ if ($registration.ExitCode -ne 0) {
 }
 
 $controller = Join-Path $InstallDirectory 'NCMMiniBandCtl.exe'
-& $controller refresh | Out-Null
+& $controller refresh 2>$null | Out-Null
 
 $programs = [Environment]::GetFolderPath('Programs')
 $shortcutPath = Join-Path $programs 'NCM Mini.lnk'
@@ -62,6 +63,20 @@ if (-not $NoStart) {
         $arguments = @('--cloudmusic', $CloudMusicPath)
     }
     Start-Process (Join-Path $InstallDirectory 'NCMMini.exe') -ArgumentList $arguments
+    Start-Sleep -Seconds 2
+    & $controller status 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        if ($NoExplorerRestart) {
+            Write-Warning 'Explorer must be restarted once before NCM Mini can appear.'
+        } else {
+            Write-Host 'Restarting Explorer once to load the new DeskBand...'
+            Get-Process explorer -ErrorAction SilentlyContinue | Stop-Process -Force
+            Start-Sleep -Seconds 1
+            Start-Process explorer.exe
+            Start-Sleep -Seconds 3
+            & $controller show 2>$null | Out-Null
+        }
+    }
 }
 
 Write-Host "NCM Mini installed for the current user: $InstallDirectory"
