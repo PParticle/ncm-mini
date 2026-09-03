@@ -41,8 +41,8 @@ static constexpr std::size_t CoverByteCount = 40 * 40 * 4;
 struct PlayerState
 {
     bool running = false;
-    std::wstring title = L"NCM Mini";
-    std::wstring artist = L"\u6b63\u5728\u8fde\u63a5\u5bbf\u4e3b";
+    std::wstring title;
+    std::wstring artist = L"\u6b63\u5728\u8fde\u63a5";
     std::wstring lyric;
     std::vector<std::uint8_t> cover;
 };

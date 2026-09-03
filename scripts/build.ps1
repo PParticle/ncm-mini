@@ -1,15 +1,14 @@
 [CmdletBinding()]
 param(
     [ValidateSet('Debug', 'Release')]
-    [string]$Configuration = 'Debug',
-    [switch]$FrameworkDependent
+    [string]$Configuration = 'Debug'
 )
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $output = Join-Path $root 'artifacts\publish'
 $bandSource = Join-Path $root 'src\NCMMini.Band'
-$hostProject = Join-Path $root 'src\NCMMini.Host\NCMMini.Host.csproj'
+$hostSource = Join-Path $root 'src\NCMMini.HostCpp'
 
 Get-Process NCMMini -ErrorAction SilentlyContinue | Stop-Process -Force
 foreach ($controller in @(
@@ -43,10 +42,11 @@ $commonFlags = @(
     '-std=c++17',
     '-DUNICODE',
     '-D_UNICODE',
-    '-municode',
     '-static',
     '-static-libgcc',
-    '-static-libstdc++',
+    '-static-libstdc++'
+)
+$bandLibraries = @(
     '-lole32',
     '-luuid',
     '-ladvapi32',
@@ -54,34 +54,27 @@ $commonFlags = @(
     '-lgdi32'
 )
 
-& $compiler.Source '-shared' (Join-Path $bandSource 'NCMMiniBand.cpp') '-o' (Join-Path $output 'NCMMiniBand.dll') @commonFlags
+& $compiler.Source '-shared' (Join-Path $bandSource 'NCMMiniBand.cpp') '-o' (Join-Path $output 'NCMMiniBand.dll') @commonFlags @bandLibraries
 if ($LASTEXITCODE -ne 0) { throw "DeskBand compilation failed with exit code $LASTEXITCODE." }
 
-& $compiler.Source (Join-Path $bandSource 'NCMMiniBandCtl.cpp') '-o' (Join-Path $output 'NCMMiniBandCtl.exe') @commonFlags
+& $compiler.Source '-municode' (Join-Path $bandSource 'NCMMiniBandCtl.cpp') '-o' (Join-Path $output 'NCMMiniBandCtl.exe') @commonFlags @bandLibraries
 if ($LASTEXITCODE -ne 0) { throw "DeskBand controller compilation failed with exit code $LASTEXITCODE." }
 
-$publishArguments = @(
-    'publish',
-    $hostProject,
-    '--configuration', $Configuration,
-    '--runtime', 'win-x64',
-    '--output', $output,
-    '-p:PublishSingleFile=true',
-    '-p:DebugType=embedded'
+$hostSources = @(
+    (Join-Path $hostSource 'main.cpp'),
+    (Join-Path $hostSource 'Host.cpp'),
+    (Join-Path $hostSource 'Json.cpp'),
+    (Join-Path $hostSource 'Media.cpp'),
+    (Join-Path $hostSource 'PipeServer.cpp')
 )
-if ($FrameworkDependent) {
-    $publishArguments += '--self-contained'
-    $publishArguments += 'false'
-} else {
-    $publishArguments += '--self-contained'
-    $publishArguments += 'true'
-    $publishArguments += '-p:IncludeNativeLibrariesForSelfExtract=true'
-    $publishArguments += '-p:EnableCompressionInSingleFile=true'
-}
+$hostLibraries = @('-lole32', '-luuid', '-luser32', '-lshell32', '-lwinhttp', '-lwindowscodecs')
+& $compiler.Source '-municode' '-mwindows' @hostSources '-o' (Join-Path $output 'NCMMini.exe') @commonFlags @hostLibraries
+if ($LASTEXITCODE -ne 0) { throw "Native host compilation failed with exit code $LASTEXITCODE." }
 
-& dotnet @publishArguments
-if ($LASTEXITCODE -ne 0) { throw "Host publication failed with exit code $LASTEXITCODE." }
+if ($Configuration -eq 'Release') {
+    & strip.exe (Join-Path $output 'NCMMini.exe') (Join-Path $output 'NCMMiniBand.dll') (Join-Path $output 'NCMMiniBandCtl.exe')
+}
 
 Copy-Item (Join-Path $PSScriptRoot 'install.ps1') $output
 Copy-Item (Join-Path $PSScriptRoot 'uninstall.ps1') $output
-Write-Host "NCM Mini build output: $output"
+Write-Host "NCM Mini native build output: $output"

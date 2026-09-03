@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $publish = Join-Path $root 'artifacts\publish'
 if (-not (Test-Path (Join-Path $publish 'NCMMini.exe'))) {
-    & (Join-Path $PSScriptRoot 'build.ps1') -Configuration Debug -FrameworkDependent
+    & (Join-Path $PSScriptRoot 'build.ps1') -Configuration Debug
 }
 
 $dll = Join-Path $publish 'NCMMiniBand.dll'
