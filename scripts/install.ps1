@@ -37,7 +37,7 @@ foreach ($file in $requiredFiles) {
 }
 
 $dll = Join-Path $InstallDirectory 'NCMMiniBand.dll'
-$registration = Start-Process "$env:SystemRoot\System32\regsvr32.exe" -ArgumentList @('/s', $dll) -Wait -PassThru
+$registration = Start-Process "$env:SystemRoot\System32\regsvr32.exe" -ArgumentList @('/s', "`"$dll`"") -Wait -PassThru
 if ($registration.ExitCode -ne 0) {
     throw "DeskBand registration failed with exit code $($registration.ExitCode)."
 }

@@ -10,6 +10,7 @@ if (-not (Test-Path (Join-Path $publish 'NCMMini.exe'))) {
     & (Join-Path $PSScriptRoot 'build.ps1') -Configuration Debug -FrameworkDependent
 }
 
-Start-Process "$env:SystemRoot\System32\regsvr32.exe" -ArgumentList @('/s', (Join-Path $publish 'NCMMiniBand.dll')) -Wait | Out-Null
+$dll = Join-Path $publish 'NCMMiniBand.dll'
+Start-Process "$env:SystemRoot\System32\regsvr32.exe" -ArgumentList @('/s', "`"$dll`"") -Wait | Out-Null
 & (Join-Path $publish 'NCMMiniBandCtl.exe') refresh | Out-Null
 Start-Process (Join-Path $publish 'NCMMini.exe') -ArgumentList @('--cloudmusic', $CloudMusicPath)

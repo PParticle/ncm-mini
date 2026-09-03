@@ -13,7 +13,7 @@ if (Test-Path $controller) {
 
 $dll = Join-Path $InstallDirectory 'NCMMiniBand.dll'
 if (Test-Path $dll) {
-    Start-Process "$env:SystemRoot\System32\regsvr32.exe" -ArgumentList @('/u', '/s', $dll) -Wait | Out-Null
+    Start-Process "$env:SystemRoot\System32\regsvr32.exe" -ArgumentList @('/u', '/s', "`"$dll`"") -Wait | Out-Null
 }
 
 $shortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'NCM Mini.lnk'
