@@ -43,7 +43,8 @@ $bandLibraries = @(
     '-luuid',
     '-ladvapi32',
     '-luser32',
-    '-lgdi32'
+    '-lgdi32',
+    '-luxtheme'
 )
 
 & $compiler.Source '-shared' (Join-Path $bandSource 'NCMMiniBand.cpp') '-o' (Join-Path $staging 'NCMMiniBand.dll') @commonFlags @bandLibraries

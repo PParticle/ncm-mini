@@ -5,6 +5,7 @@
 #include <ole2.h>
 #include <shobjidl.h>
 #include <strsafe.h>
+#include <uxtheme.h>
 #include <windowsx.h>
 
 #include <algorithm>
@@ -424,9 +425,12 @@ private:
         HBITMAP bitmap = CreateCompatibleBitmap(target, width, height);
         const auto previousBitmap = SelectObject(buffer, bitmap);
 
-        HBRUSH background = CreateSolidBrush(RGB(30, 30, 32));
-        FillRect(buffer, &client, background);
-        DeleteObject(background);
+        if (FAILED(DrawThemeParentBackground(window, buffer, &client)))
+        {
+            HBRUSH background = CreateSolidBrush(GetSysColor(COLOR_3DFACE));
+            FillRect(buffer, &client, background);
+            DeleteObject(background);
+        }
 
         PlayerState state;
         {
@@ -521,9 +525,12 @@ private:
     void DrawButton(HDC device, const RECT& rectangle, int index, bool enabled) const
     {
         const auto active = enabled && hoverButton_ == index;
-        HBRUSH brush = CreateSolidBrush(active ? RGB(62, 63, 68) : RGB(39, 40, 43));
-        FillRect(device, &rectangle, brush);
-        DeleteObject(brush);
+        if (active)
+        {
+            HBRUSH brush = CreateSolidBrush(RGB(62, 63, 68));
+            FillRect(device, &rectangle, brush);
+            DeleteObject(brush);
+        }
         const auto color = enabled ? RGB(235, 235, 238) : RGB(105, 105, 108);
         HPEN pen = CreatePen(PS_SOLID, 2, color);
         HBRUSH iconBrush = CreateSolidBrush(color);
