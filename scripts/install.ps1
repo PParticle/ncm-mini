@@ -26,15 +26,30 @@ $oldController = Join-Path $InstallDirectory 'NCMMiniBandCtl.exe'
 if (Test-Path $oldController) {
     & $oldController hide | Out-Null
 }
+$oldDll = Join-Path $InstallDirectory 'NCMMiniBand.dll'
+if (Test-Path $oldDll) {
+    Start-Process "$env:SystemRoot\System32\regsvr32.exe" -ArgumentList @('/u', '/s', "`"$oldDll`"") -Wait | Out-Null
+}
 
 New-Item $InstallDirectory -ItemType Directory -Force | Out-Null
-foreach ($file in $requiredFiles) {
-    $sourcePath = Join-Path $source $file
-    $targetPath = Join-Path $InstallDirectory $file
-    $existingTarget = Resolve-Path $targetPath -ErrorAction SilentlyContinue
-    if (-not $existingTarget -or (Resolve-Path $sourcePath).Path -ne $existingTarget.Path) {
-        Copy-Item $sourcePath $targetPath -Force
+try {
+    foreach ($file in $requiredFiles) {
+        $sourcePath = Join-Path $source $file
+        $targetPath = Join-Path $InstallDirectory $file
+        $existingTarget = Resolve-Path $targetPath -ErrorAction SilentlyContinue
+        if (-not $existingTarget -or (Resolve-Path $sourcePath).Path -ne $existingTarget.Path) {
+            Copy-Item $sourcePath $targetPath -Force -ErrorAction Stop
+        }
     }
+} catch {
+    Write-Host 'Restarting Explorer to replace the previous DeskBand...'
+    Get-Process explorer -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Sleep -Seconds 1
+    foreach ($file in $requiredFiles) {
+        Copy-Item (Join-Path $source $file) (Join-Path $InstallDirectory $file) -Force
+    }
+    Start-Process explorer.exe
+    Start-Sleep -Seconds 2
 }
 
 $dll = Join-Path $InstallDirectory 'NCMMiniBand.dll'
