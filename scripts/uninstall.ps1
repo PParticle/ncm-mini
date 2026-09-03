@@ -13,11 +13,10 @@ if (Test-Path $controller) {
 
 $dll = Join-Path $InstallDirectory 'NCMMiniBand.dll'
 if (Test-Path $dll) {
-    & "$env:SystemRoot\System32\regsvr32.exe" /u /s $dll
+    Start-Process "$env:SystemRoot\System32\regsvr32.exe" -ArgumentList @('/u', '/s', $dll) -Wait | Out-Null
 }
 
 $shortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'NCM Mini.lnk'
 Remove-Item $shortcut -Force -ErrorAction SilentlyContinue
 Remove-Item $InstallDirectory -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host 'NCM Mini was uninstalled for the current user.'
-

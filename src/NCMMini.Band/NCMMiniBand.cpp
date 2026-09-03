@@ -31,7 +31,7 @@ static const CLSID CLSID_NCMMiniDeskBand =
 { 0x9c941a4d, 0xd554, 0x4012, { 0x88, 0xe0, 0x95, 0x31, 0xd6, 0xb8, 0x80, 0xba } };
 
 static constexpr wchar_t ClsidText[] = L"{9C941A4D-D554-4012-88E0-9531D6B880BA}";
-static constexpr wchar_t DeskBandCategoryText[] = L"{00021494-0000-0000-C000-000000000046}";
+static constexpr wchar_t DeskBandCategoryText[] = L"{00021492-0000-0000-C000-000000000046}";
 static constexpr wchar_t WindowClassName[] = L"NCMMini.DeskBand.Window.1";
 static constexpr UINT StateMessageId = WM_APP + 41;
 static constexpr UINT ConnectionMessageId = WM_APP + 42;
