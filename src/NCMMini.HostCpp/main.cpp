@@ -72,7 +72,7 @@ public:
                 lyrics = options_.showLyrics ? lyricsStore_.Find(track) : std::vector<LyricLine>{};
                 cover = LoadCover(track.coverUrl);
                 coverRetryCount = 0;
-                coverRetryAt = std::chrono::steady_clock::now() + std::chrono::milliseconds(250);
+                coverRetryAt = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
                 previousLyric.clear();
                 publishedTitle.clear();
             }
@@ -101,7 +101,7 @@ public:
                     stateChanged = !cover.empty();
                 }
                 ++coverRetryCount;
-                const auto delay = std::min(2000u, 250u * (coverRetryCount + 1));
+                const auto delay = std::min(1000u, 100u * (coverRetryCount + 1));
                 coverRetryAt = std::chrono::steady_clock::now() + std::chrono::milliseconds(delay);
             }
 
@@ -120,7 +120,7 @@ public:
                     cover
                 });
             }
-            Wait(std::chrono::milliseconds(300));
+            Wait(std::chrono::milliseconds(100));
         }
 
         if (options_.closeCloudMusicOnExit)
