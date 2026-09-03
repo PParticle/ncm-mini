@@ -244,7 +244,12 @@ bool RunBandController(const wchar_t* command)
         Log(L"DeskBand controller failed: " + std::to_wstring(GetLastError()));
         return false;
     }
-    WaitForSingleObject(process.hProcess, 3000);
+    const auto waitResult = WaitForSingleObject(process.hProcess, 30000);
+    if (waitResult != WAIT_OBJECT_0)
+    {
+        TerminateProcess(process.hProcess, 1);
+        Log(L"DeskBand controller timed out");
+    }
     DWORD exitCode = 1;
     GetExitCodeProcess(process.hProcess, &exitCode);
     CloseHandle(process.hThread);
