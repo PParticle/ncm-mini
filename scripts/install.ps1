@@ -7,6 +7,68 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+function Find-CloudMusicPath {
+    $candidates = [System.Collections.Generic.List[string]]::new()
+
+    Get-Process cloudmusic -ErrorAction SilentlyContinue | ForEach-Object {
+        try {
+            if ($_.Path) {
+                [void]$candidates.Add($_.Path)
+            } elseif ($_.MainModule.FileName) {
+                [void]$candidates.Add($_.MainModule.FileName)
+            }
+        } catch {
+        }
+    }
+
+    [void]$candidates.Add('D:\Apps\Netease\CloudMusic\cloudmusic.exe')
+    [void]$candidates.Add((Join-Path $env:LOCALAPPDATA 'NetEase\CloudMusic\cloudmusic.exe'))
+    [void]$candidates.Add((Join-Path $env:ProgramFiles 'NetEase\CloudMusic\cloudmusic.exe'))
+    if (${env:ProgramFiles(x86)}) {
+        [void]$candidates.Add((Join-Path ${env:ProgramFiles(x86)} 'NetEase\CloudMusic\cloudmusic.exe'))
+    }
+
+    $shortcutRoots = @(
+        (Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs'),
+        (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs')
+    ) | Where-Object { Test-Path $_ }
+    if ($shortcutRoots) {
+        $shell = New-Object -ComObject WScript.Shell
+        Get-ChildItem $shortcutRoots -Filter '*.lnk' -File -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+            try {
+                $shortcut = $shell.CreateShortcut($_.FullName)
+                if ($shortcut.TargetPath -and [System.IO.Path]::GetFileName($shortcut.TargetPath) -ieq 'cloudmusic.exe') {
+                    [void]$candidates.Add($shortcut.TargetPath)
+                }
+            } catch {
+            }
+        }
+    }
+
+    foreach ($candidate in $candidates) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate)) {
+            try {
+                $fullPath = [System.IO.Path]::GetFullPath($candidate)
+                if (([System.IO.Path]::GetFileName($fullPath) -ieq 'cloudmusic.exe') -and (Test-Path $fullPath -PathType Leaf)) {
+                    return $fullPath
+                }
+            } catch {
+            }
+        }
+    }
+    return $null
+}
+
+if ([string]::IsNullOrWhiteSpace($CloudMusicPath)) {
+    $CloudMusicPath = Find-CloudMusicPath
+    if ($CloudMusicPath) {
+        Write-Host "Detected CloudMusic: $CloudMusicPath"
+    } else {
+        Write-Warning 'cloudmusic.exe was not found. NCM Mini will try its built-in paths when started.'
+    }
+}
+
 $source = $PSScriptRoot
 if (-not (Test-Path (Join-Path $source 'NCMMini.exe'))) {
     $candidate = Join-Path $PSScriptRoot '..\artifacts\publish'
