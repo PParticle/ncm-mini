@@ -198,7 +198,7 @@ public:
         }
         if ((info->dwMask & DBIM_TITLE) != 0)
         {
-            StringCchCopyW(info->wszTitle, ARRAYSIZE(info->wszTitle), L"NCM Mini");
+            info->wszTitle[0] = L'\0';
         }
         if ((info->dwMask & DBIM_MODEFLAGS) != 0)
         {
