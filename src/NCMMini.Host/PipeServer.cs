@@ -119,7 +119,7 @@ internal sealed class PipeServer : IAsyncDisposable
                 await connection.FlushAsync(cancellationToken);
             }
         }
-        catch (IOException)
+        catch (Exception exception) when (exception is IOException or ObjectDisposedException or InvalidOperationException)
         {
         }
         finally
@@ -151,4 +151,3 @@ internal sealed class PipeServer : IAsyncDisposable
         return buffer.ToArray();
     }
 }
-

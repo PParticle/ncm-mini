@@ -14,9 +14,11 @@
 #include <cstdint>
 #include <deque>
 #include <mutex>
+#include <memory>
 #include <new>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "Protocol.h"
@@ -969,4 +971,3 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID)
     }
     return TRUE;
 }
-

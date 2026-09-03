@@ -3,6 +3,7 @@
 #include <shobjidl.h>
 
 #include <cwchar>
+#include <cstdio>
 
 static const CLSID CLSID_NCMMiniDeskBand =
 { 0x9c941a4d, 0xd554, 0x4012, { 0x88, 0xe0, 0x95, 0x31, 0xd6, 0xb8, 0x80, 0xba } };
@@ -21,20 +22,24 @@ int wmain(int argumentCount, wchar_t** arguments)
 
     ITrayDeskBand* tray = nullptr;
     auto result = CoCreateInstance(CLSID_TrayDeskBand, nullptr, CLSCTX_LOCAL_SERVER, IID_PPV_ARGS(&tray));
+    std::fwprintf(stderr, L"CoCreateInstance=0x%08lX\n", static_cast<unsigned long>(result));
     if (SUCCEEDED(result))
     {
         if (_wcsicmp(arguments[1], L"show") == 0)
         {
             tray->DeskBandRegistrationChanged();
             result = tray->IsDeskBandShown(CLSID_NCMMiniDeskBand);
-            if (result == S_FALSE)
+            std::fwprintf(stderr, L"IsDeskBandShown=0x%08lX\n", static_cast<unsigned long>(result));
+            if (result != S_OK)
             {
                 result = tray->ShowDeskBand(CLSID_NCMMiniDeskBand);
+                std::fwprintf(stderr, L"ShowDeskBand=0x%08lX\n", static_cast<unsigned long>(result));
             }
         }
         else if (_wcsicmp(arguments[1], L"hide") == 0)
         {
             result = tray->IsDeskBandShown(CLSID_NCMMiniDeskBand);
+            std::fwprintf(stderr, L"IsDeskBandShown=0x%08lX\n", static_cast<unsigned long>(result));
             if (result == S_OK)
             {
                 result = tray->HideDeskBand(CLSID_NCMMiniDeskBand);

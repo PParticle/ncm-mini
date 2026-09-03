@@ -1,5 +1,6 @@
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Drawing;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 
@@ -68,4 +69,3 @@ internal static class CoverLoader
         }
     }
 }
-
