@@ -1,0 +1,23 @@
+[CmdletBinding()]
+param(
+    [string]$InstallDirectory = (Join-Path $env:LOCALAPPDATA 'NCM Mini')
+)
+
+$ErrorActionPreference = 'Stop'
+Get-Process NCMMini -ErrorAction SilentlyContinue | Stop-Process -Force
+
+$controller = Join-Path $InstallDirectory 'NCMMiniBandCtl.exe'
+if (Test-Path $controller) {
+    & $controller hide | Out-Null
+}
+
+$dll = Join-Path $InstallDirectory 'NCMMiniBand.dll'
+if (Test-Path $dll) {
+    & "$env:SystemRoot\System32\regsvr32.exe" /u /s $dll
+}
+
+$shortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'NCM Mini.lnk'
+Remove-Item $shortcut -Force -ErrorAction SilentlyContinue
+Remove-Item $InstallDirectory -Recurse -Force -ErrorAction SilentlyContinue
+Write-Host 'NCM Mini was uninstalled for the current user.'
+
