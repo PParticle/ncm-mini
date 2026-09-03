@@ -12,11 +12,25 @@ $bandSource = Join-Path $root 'src\NCMMini.Band'
 $hostProject = Join-Path $root 'src\NCMMini.Host\NCMMini.Host.csproj'
 
 Get-Process NCMMini -ErrorAction SilentlyContinue | Stop-Process -Force
-if (Test-Path (Join-Path $output 'NCMMiniBandCtl.exe')) {
-    & (Join-Path $output 'NCMMiniBandCtl.exe') hide 2>$null | Out-Null
-    Start-Sleep -Milliseconds 300
+foreach ($controller in @(
+    (Join-Path $output 'NCMMiniBandCtl.exe'),
+    (Join-Path $env:LOCALAPPDATA 'NCM Mini\NCMMiniBandCtl.exe')
+)) {
+    if (Test-Path $controller) {
+        & $controller hide 2>$null | Out-Null
+    }
 }
-Remove-Item $output -Recurse -Force -ErrorAction SilentlyContinue
+Start-Sleep -Milliseconds 300
+try {
+    Remove-Item $output -Recurse -Force -ErrorAction Stop
+} catch {
+    Write-Warning 'The previous development DeskBand is still loaded. Restarting Explorer to release it.'
+    Get-Process explorer -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Sleep -Seconds 1
+    Remove-Item $output -Recurse -Force -ErrorAction SilentlyContinue
+    Start-Process explorer.exe
+    Start-Sleep -Seconds 2
+}
 New-Item $output -ItemType Directory -Force | Out-Null
 
 $compiler = Get-Command g++.exe -ErrorAction SilentlyContinue
