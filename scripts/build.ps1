@@ -75,6 +75,10 @@ if (Test-Path $output) {
         Remove-Item $output -Recurse -Force -ErrorAction Stop
     } catch {
         Write-Warning 'The previous development DeskBand is still loaded. Restarting Explorer to release it.'
+        $oldDll = Join-Path $output 'NCMMiniBand.dll'
+        if (Test-Path $oldDll) {
+            & $env:SystemRoot\System32\regsvr32.exe /u /s $oldDll
+        }
         Get-Process explorer -ErrorAction SilentlyContinue | Stop-Process -Force
         Get-Process explorer -ErrorAction SilentlyContinue | Wait-Process -Timeout 5 -ErrorAction SilentlyContinue
         Remove-Item $output -Recurse -Force -ErrorAction Stop
