@@ -333,14 +333,14 @@ std::vector<std::uint8_t> DecodeCover(std::vector<std::uint8_t>& encoded)
 }
 }
 
-TrackInfo TrackCatalog::Find(const std::wstring& title)
+TrackInfo TrackCatalog::Find(const std::wstring& title, bool forceReload)
 {
     const auto [parsedName, parsedArtist] = ParsePlayerTitle(title);
     if (Trim(parsedName).empty())
     {
         return {};
     }
-    EnsureLoaded();
+    EnsureLoaded(forceReload);
     const auto name = Normalize(parsedName);
     const auto artist = Normalize(parsedArtist);
     const TrackInfo* best = nullptr;
@@ -361,10 +361,10 @@ TrackInfo TrackCatalog::Find(const std::wstring& title)
     return best == nullptr ? TrackInfo{} : *best;
 }
 
-void TrackCatalog::EnsureLoaded()
+void TrackCatalog::EnsureLoaded(bool forceReload)
 {
     const auto now = std::chrono::steady_clock::now();
-    if (lastLoad_.time_since_epoch().count() != 0 && now - lastLoad_ < std::chrono::seconds(5))
+    if (!forceReload && lastLoad_.time_since_epoch().count() != 0 && now - lastLoad_ < std::chrono::seconds(5))
     {
         return;
     }

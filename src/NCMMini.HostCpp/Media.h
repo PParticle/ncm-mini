@@ -18,10 +18,10 @@ struct LyricLine
 class TrackCatalog
 {
 public:
-    TrackInfo Find(const std::wstring& title);
+    TrackInfo Find(const std::wstring& title, bool forceReload = false);
 
 private:
-    void EnsureLoaded();
+    void EnsureLoaded(bool forceReload);
 
     std::filesystem::path dataDirectory_ = std::filesystem::path(LocalAppDataPath()) / L"NetEase" / L"CloudMusic" / L"webdata" / L"file";
     std::chrono::steady_clock::time_point lastLoad_{};

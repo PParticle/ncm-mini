@@ -37,6 +37,8 @@ public:
         std::vector<LyricLine> lyrics;
         std::vector<std::uint8_t> cover;
         auto trackStarted = std::chrono::steady_clock::now();
+        auto coverRetryAt = trackStarted;
+        unsigned int coverRetryCount = 0;
         bool disconnectedPublished = false;
 
         while (!shutdown_)
@@ -60,6 +62,7 @@ public:
 
             playerSeen = true;
             disconnectedPublished = false;
+            bool stateChanged = false;
             if (snapshot.windowTitle != previousTitle)
             {
                 previousTitle = snapshot.windowTitle;
@@ -68,14 +71,40 @@ public:
                 trackStarted = std::chrono::steady_clock::now();
                 lyrics = options_.showLyrics ? lyricsStore_.Find(track) : std::vector<LyricLine>{};
                 cover = LoadCover(track.coverUrl);
+                coverRetryCount = 0;
+                coverRetryAt = std::chrono::steady_clock::now() + std::chrono::seconds(1);
                 previousLyric.clear();
                 publishedTitle.clear();
+            }
+
+            const auto now = std::chrono::steady_clock::now();
+            if (cover.empty() && now >= coverRetryAt && !snapshot.windowTitle.empty())
+            {
+                const auto refreshed = catalog_.Find(snapshot.windowTitle, true);
+                if (!refreshed.name.empty())
+                {
+                    const bool metadataChanged = refreshed.coverUrl != track.coverUrl
+                        || refreshed.trackId != track.trackId || refreshed.lyricsId != track.lyricsId;
+                    track = refreshed;
+                    if (metadataChanged && options_.showLyrics)
+                    {
+                        lyrics = lyricsStore_.Find(track);
+                    }
+                }
+                if (!track.coverUrl.empty())
+                {
+                    cover = LoadCover(track.coverUrl);
+                    stateChanged = !cover.empty();
+                }
+                ++coverRetryCount;
+                const auto delay = std::min(30u, 1u << std::min(coverRetryCount, 4u));
+                coverRetryAt = std::chrono::steady_clock::now() + std::chrono::seconds(delay);
             }
 
             const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - trackStarted);
             const auto lyric = options_.showLyrics ? LyricsStore::Current(lyrics, elapsed) : std::wstring();
-            if (lyric != previousLyric || snapshot.windowTitle != publishedTitle)
+            if (stateChanged || lyric != previousLyric || snapshot.windowTitle != publishedTitle)
             {
                 previousLyric = lyric;
                 publishedTitle = snapshot.windowTitle;
