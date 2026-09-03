@@ -27,6 +27,7 @@ internal sealed class HostApplication
         var playerSeen = false;
         string previousTitle = string.Empty;
         string previousLyric = string.Empty;
+        string publishedTitle = string.Empty;
         TrackInfo? track = null;
         IReadOnlyList<LyricLine> lyrics = [];
         byte[] cover = [];
@@ -63,9 +64,11 @@ internal sealed class HostApplication
                 var currentLyric = _options.ShowLyrics
                     ? LyricsStore.GetCurrent(lyrics, DateTimeOffset.UtcNow - trackStarted)
                     : string.Empty;
-                if (!string.Equals(currentLyric, previousLyric, StringComparison.Ordinal) || snapshot.WindowTitle == previousTitle)
+                if (!string.Equals(currentLyric, previousLyric, StringComparison.Ordinal)
+                    || !string.Equals(snapshot.WindowTitle, publishedTitle, StringComparison.Ordinal))
                 {
                     previousLyric = currentLyric;
+                    publishedTitle = snapshot.WindowTitle;
                     var shownTrack = track ?? snapshot.Track;
                     await pipe.PublishAsync(new BandState(
                         true,

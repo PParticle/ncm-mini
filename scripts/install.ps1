@@ -7,6 +7,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $source = $PSScriptRoot
+if (-not (Test-Path (Join-Path $source 'NCMMini.exe'))) {
+    $candidate = Join-Path $PSScriptRoot '..\artifacts\publish'
+    if (Test-Path (Join-Path $candidate 'NCMMini.exe')) {
+        $source = (Resolve-Path $candidate).Path
+    }
+}
 $requiredFiles = @('NCMMini.exe', 'NCMMiniBand.dll', 'NCMMiniBandCtl.exe', 'uninstall.ps1')
 foreach ($file in $requiredFiles) {
     if (-not (Test-Path (Join-Path $source $file))) {
@@ -21,10 +27,11 @@ if (Test-Path $oldController) {
 }
 
 New-Item $InstallDirectory -ItemType Directory -Force | Out-Null
-foreach ($file in $requiredFiles + 'install.ps1') {
+foreach ($file in $requiredFiles) {
     $sourcePath = Join-Path $source $file
     $targetPath = Join-Path $InstallDirectory $file
-    if ((Resolve-Path $sourcePath).Path -ne (Resolve-Path $targetPath -ErrorAction SilentlyContinue).Path) {
+    $existingTarget = Resolve-Path $targetPath -ErrorAction SilentlyContinue
+    if (-not $existingTarget -or (Resolve-Path $sourcePath).Path -ne $existingTarget.Path) {
         Copy-Item $sourcePath $targetPath -Force
     }
 }
@@ -58,4 +65,3 @@ if (-not $NoStart) {
 }
 
 Write-Host "NCM Mini installed for the current user: $InstallDirectory"
-
