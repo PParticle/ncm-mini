@@ -36,6 +36,7 @@ private:
     void ChooseColorSetting(int index);
     void DrawColorButton(const DRAWITEMSTRUCT& item) const;
     void CenterWindow() const;
+    void BringToForeground() const;
 
     std::wstring path_;
     ApplyHandler applyHandler_;

@@ -194,8 +194,8 @@ LRESULT SettingsWindow::HandleMessage(HWND window, UINT message, WPARAM wParam, 
         working_ = LoadSettings(path_);
         LoadControls();
         CenterWindow();
-        ShowWindow(window, SW_SHOWNORMAL);
-        SetForegroundWindow(window);
+        ShowWindow(window, IsIconic(window) ? SW_RESTORE : SW_SHOWNORMAL);
+        BringToForeground();
         return 0;
     case StopWindowMessage:
         DestroyWindow(window);
@@ -387,11 +387,45 @@ void SettingsWindow::CenterWindow() const
     RECT windowRect{};
     RECT workArea{};
     GetWindowRect(window_, &windowRect);
-    SystemParametersInfoW(SPI_GETWORKAREA, 0, &workArea, 0);
+    MONITORINFO monitorInfo{sizeof(monitorInfo)};
+    const auto monitor = MonitorFromWindow(GetForegroundWindow(), MONITOR_DEFAULTTOPRIMARY);
+    if (monitor != nullptr && GetMonitorInfoW(monitor, &monitorInfo))
+    {
+        workArea = monitorInfo.rcWork;
+    }
+    else
+    {
+        SystemParametersInfoW(SPI_GETWORKAREA, 0, &workArea, 0);
+    }
     const auto width = windowRect.right - windowRect.left;
     const auto height = windowRect.bottom - windowRect.top;
     const auto x = workArea.left + (workArea.right - workArea.left - width) / 2;
     const auto y = workArea.top + (workArea.bottom - workArea.top - height) / 2;
     SetWindowPos(window_, HWND_TOP, x, y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
+}
+
+void SettingsWindow::BringToForeground() const
+{
+    const auto foreground = GetForegroundWindow();
+    const auto currentThread = GetCurrentThreadId();
+    const auto foregroundThread = foreground == nullptr
+        ? 0
+        : GetWindowThreadProcessId(foreground, nullptr);
+    const bool attached = foregroundThread != 0 && foregroundThread != currentThread
+        && AttachThreadInput(currentThread, foregroundThread, TRUE) != FALSE;
+
+    SetWindowPos(window_, HWND_TOPMOST, 0, 0, 0, 0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+    BringWindowToTop(window_);
+    SetForegroundWindow(window_);
+    SetActiveWindow(window_);
+    SetFocus(window_);
+    SetWindowPos(window_, HWND_NOTOPMOST, 0, 0, 0, 0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+
+    if (attached)
+    {
+        AttachThreadInput(currentThread, foregroundThread, FALSE);
+    }
 }
 }
