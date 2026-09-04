@@ -65,7 +65,7 @@ static std::wstring Utf8ToWide(const char* data, std::size_t length)
     return result;
 }
 
-class DeskBand final : public IDeskBand, public IObjectWithSite, public IInputObject, public IPersistStream
+class DeskBand final : public IDeskBand2, public IObjectWithSite, public IInputObject, public IPersistStream
 {
 public:
     DeskBand() : references_(1)
@@ -95,6 +95,10 @@ public:
         if (iid == IID_IUnknown || iid == IID_IOleWindow || iid == IID_IDockingWindow || iid == IID_IDeskBand)
         {
             *object = static_cast<IDeskBand*>(this);
+        }
+        else if (iid == IID_IDeskBand2)
+        {
+            *object = static_cast<IDeskBand2*>(this);
         }
         else if (iid == IID_IObjectWithSite)
         {
@@ -210,6 +214,36 @@ public:
         {
             info->dwMask &= ~DBIM_BKCOLOR;
         }
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE CanRenderComposited(BOOL* canRenderComposited) override
+    {
+        if (canRenderComposited == nullptr)
+        {
+            return E_POINTER;
+        }
+        *canRenderComposited = TRUE;
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE SetCompositionState(BOOL compositionEnabled) override
+    {
+        compositionEnabled_ = compositionEnabled;
+        if (window_ != nullptr)
+        {
+            InvalidateRect(window_, nullptr, TRUE);
+        }
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE GetCompositionState(BOOL* compositionEnabled) override
+    {
+        if (compositionEnabled == nullptr)
+        {
+            return E_POINTER;
+        }
+        *compositionEnabled = compositionEnabled_;
         return S_OK;
     }
 
@@ -802,6 +836,7 @@ private:
     HWND window_ = nullptr;
     HFONT titleFont_ = nullptr;
     HFONT detailFont_ = nullptr;
+    BOOL compositionEnabled_ = TRUE;
     ncmmini::AppSettings settings_;
     RECT buttonRects_[3]{};
     bool mouseTracking_ = false;
