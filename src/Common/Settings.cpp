@@ -96,25 +96,16 @@ std::wstring SettingsPath(HMODULE module)
 AppSettings LoadSettings(const std::wstring& path)
 {
     AppSettings settings;
-    settings.showCover = ReadBoolean(path, L"Display", L"ShowCover", settings.showCover);
     settings.showLyrics = ReadBoolean(path, L"Display", L"ShowLyrics", settings.showLyrics);
-    settings.coverInset = ReadInteger(path, L"Display", L"CoverInset", settings.coverInset, 0, 8);
-    settings.buttonSize = ReadInteger(path, L"Display", L"ButtonSize", settings.buttonSize, 24, 40);
 
-    settings.titleFont.name = ReadString(path, L"TitleFont", L"Name", settings.titleFont.name);
-    settings.titleFont.pointSize = ReadInteger(path, L"TitleFont", L"Size", settings.titleFont.pointSize, 6, 24);
-    settings.titleFont.weight = ReadInteger(path, L"TitleFont", L"Weight", settings.titleFont.weight, 100, 900);
-    settings.titleFont.italic = ReadBoolean(path, L"TitleFont", L"Italic", settings.titleFont.italic);
-    settings.detailFont.name = ReadString(path, L"DetailFont", L"Name", settings.detailFont.name);
-    settings.detailFont.pointSize = ReadInteger(path, L"DetailFont", L"Size", settings.detailFont.pointSize, 6, 24);
-    settings.detailFont.weight = ReadInteger(path, L"DetailFont", L"Weight", settings.detailFont.weight, 100, 900);
-    settings.detailFont.italic = ReadBoolean(path, L"DetailFont", L"Italic", settings.detailFont.italic);
+    const auto legacyFontName = ReadString(path, L"TitleFont", L"Name", settings.font.name);
+    const auto legacyFontSize = ReadInteger(path, L"TitleFont", L"Size", settings.font.pointSize, 6, 24);
+    settings.font.name = ReadString(path, L"Font", L"Name", legacyFontName);
+    settings.font.pointSize = ReadInteger(path, L"Font", L"Size", legacyFontSize, 6, 24);
 
     settings.titleColor = ReadColor(path, L"Title", settings.titleColor);
-    settings.artistColor = ReadColor(path, L"Artist", settings.artistColor);
     settings.lyricColor = ReadColor(path, L"Lyric", settings.lyricColor);
     settings.buttonColor = ReadColor(path, L"Button", settings.buttonColor);
-    settings.buttonHoverColor = ReadColor(path, L"ButtonHover", settings.buttonHoverColor);
     settings.refreshIntervalMs = ReadInteger(path, L"Behavior", L"RefreshIntervalMs", settings.refreshIntervalMs, 50, 2000);
     settings.closeCloudMusicOnExit = ReadBoolean(path, L"Behavior", L"CloseCloudMusicOnExit", settings.closeCloudMusicOnExit);
     return settings;
@@ -123,25 +114,21 @@ AppSettings LoadSettings(const std::wstring& path)
 bool SaveSettings(const std::wstring& path, const AppSettings& settings)
 {
     bool result = true;
-    result &= WriteBoolean(path, L"Display", L"ShowCover", settings.showCover);
     result &= WriteBoolean(path, L"Display", L"ShowLyrics", settings.showLyrics);
-    result &= WriteInteger(path, L"Display", L"CoverInset", settings.coverInset);
-    result &= WriteInteger(path, L"Display", L"ButtonSize", settings.buttonSize);
-    result &= WriteValue(path, L"TitleFont", L"Name", settings.titleFont.name);
-    result &= WriteInteger(path, L"TitleFont", L"Size", settings.titleFont.pointSize);
-    result &= WriteInteger(path, L"TitleFont", L"Weight", settings.titleFont.weight);
-    result &= WriteBoolean(path, L"TitleFont", L"Italic", settings.titleFont.italic);
-    result &= WriteValue(path, L"DetailFont", L"Name", settings.detailFont.name);
-    result &= WriteInteger(path, L"DetailFont", L"Size", settings.detailFont.pointSize);
-    result &= WriteInteger(path, L"DetailFont", L"Weight", settings.detailFont.weight);
-    result &= WriteBoolean(path, L"DetailFont", L"Italic", settings.detailFont.italic);
+    result &= WriteValue(path, L"Font", L"Name", settings.font.name);
+    result &= WriteInteger(path, L"Font", L"Size", settings.font.pointSize);
     result &= WriteColor(path, L"Title", settings.titleColor);
-    result &= WriteColor(path, L"Artist", settings.artistColor);
     result &= WriteColor(path, L"Lyric", settings.lyricColor);
     result &= WriteColor(path, L"Button", settings.buttonColor);
-    result &= WriteColor(path, L"ButtonHover", settings.buttonHoverColor);
     result &= WriteInteger(path, L"Behavior", L"RefreshIntervalMs", settings.refreshIntervalMs);
     result &= WriteBoolean(path, L"Behavior", L"CloseCloudMusicOnExit", settings.closeCloudMusicOnExit);
+    WritePrivateProfileStringW(L"Display", L"ShowCover", nullptr, path.c_str());
+    WritePrivateProfileStringW(L"Display", L"CoverInset", nullptr, path.c_str());
+    WritePrivateProfileStringW(L"Display", L"ButtonSize", nullptr, path.c_str());
+    WritePrivateProfileStringW(L"TitleFont", nullptr, nullptr, path.c_str());
+    WritePrivateProfileStringW(L"DetailFont", nullptr, nullptr, path.c_str());
+    WritePrivateProfileStringW(L"Colors", L"Artist", nullptr, path.c_str());
+    WritePrivateProfileStringW(L"Colors", L"ButtonHover", nullptr, path.c_str());
     WritePrivateProfileStringW(nullptr, nullptr, nullptr, path.c_str());
     return result;
 }

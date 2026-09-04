@@ -14,23 +14,15 @@ struct FontSettings
 {
     std::wstring name = L"Microsoft YaHei UI";
     int pointSize = 9;
-    int weight = FW_NORMAL;
-    bool italic = false;
 };
 
 struct AppSettings
 {
-    bool showCover = true;
     bool showLyrics = true;
-    int coverInset = 2;
-    int buttonSize = 32;
-    FontSettings titleFont{L"Microsoft YaHei UI", 9, FW_SEMIBOLD, false};
-    FontSettings detailFont{L"Microsoft YaHei UI", 8, FW_NORMAL, false};
+    FontSettings font;
     COLORREF titleColor = RGB(242, 242, 244);
-    COLORREF artistColor = RGB(178, 179, 184);
     COLORREF lyricColor = RGB(126, 211, 174);
     COLORREF buttonColor = RGB(190, 191, 195);
-    COLORREF buttonHoverColor = RGB(255, 255, 255);
     int refreshIntervalMs = 100;
     bool closeCloudMusicOnExit = true;
 };

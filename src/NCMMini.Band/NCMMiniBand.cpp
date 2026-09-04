@@ -39,6 +39,19 @@ static constexpr UINT ConnectionMessageId = WM_APP + 42;
 static constexpr UINT OptionsMenuId = 1001;
 static constexpr UINT ExitMenuId = 1002;
 static constexpr std::size_t CoverByteCount = 40 * 40 * 4;
+static constexpr LONG CoverInset = 2;
+static constexpr LONG ButtonSize = 32;
+
+static COLORREF BlendColor(COLORREF source, COLORREF target, int targetPercent)
+{
+    const auto blend = [targetPercent](BYTE sourceChannel, BYTE targetChannel) {
+        return static_cast<BYTE>((sourceChannel * (100 - targetPercent) + targetChannel * targetPercent + 50) / 100);
+    };
+    return RGB(
+        blend(GetRValue(source), GetRValue(target)),
+        blend(GetGValue(source), GetGValue(target)),
+        blend(GetBValue(source), GetBValue(target)));
+}
 
 struct PlayerState
 {
@@ -448,12 +461,11 @@ private:
         HDC device = GetDC(parent);
         const auto dpi = GetDeviceCaps(device, LOGPIXELSY);
         ReleaseDC(parent, device);
-        titleFont_ = CreateFontW(-MulDiv(settings_.titleFont.pointSize, dpi, 72), 0, 0, 0,
-            settings_.titleFont.weight, settings_.titleFont.italic, FALSE, FALSE, DEFAULT_CHARSET,
-            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, settings_.titleFont.name.c_str());
-        detailFont_ = CreateFontW(-MulDiv(settings_.detailFont.pointSize, dpi, 72), 0, 0, 0,
-            settings_.detailFont.weight, settings_.detailFont.italic, FALSE, FALSE, DEFAULT_CHARSET,
-            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, settings_.detailFont.name.c_str());
+        const auto height = -MulDiv(settings_.font.pointSize, dpi, 72);
+        titleFont_ = CreateFontW(height, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, settings_.font.name.c_str());
+        detailFont_ = CreateFontW(height, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, settings_.font.name.c_str());
     }
 
     void Paint(HWND window)
@@ -481,15 +493,12 @@ private:
             state = state_;
         }
 
-        const auto inset = settings_.coverInset;
+        const auto inset = CoverInset;
         const auto coverSize = std::max(1L, std::min(40L, height - inset * 2));
         RECT coverRect{ inset, (height - coverSize) / 2, inset + coverSize, (height + coverSize) / 2 };
-        if (settings_.showCover)
-        {
-            DrawCover(buffer, coverRect, state.cover);
-        }
+        DrawCover(buffer, coverRect, state.cover);
 
-        const auto buttonSize = std::max(1L, std::min(static_cast<LONG>(settings_.buttonSize), height));
+        const auto buttonSize = std::max(1L, std::min(ButtonSize, height));
         const auto buttonsWidth = buttonSize * 3;
         const auto buttonTop = (height - buttonSize) / 2;
         for (int index = 0; index < 3; ++index)
@@ -503,7 +512,7 @@ private:
             DrawButton(buffer, buttonRects_[index], index, state.running);
         }
 
-        const auto textLeft = settings_.showCover ? coverRect.right + 7 : 5L;
+        const auto textLeft = coverRect.right + 7;
         RECT textRect{ textLeft, 1, width - buttonsWidth - 6, height - 1 };
         if (textRect.right > textRect.left)
         {
@@ -511,10 +520,13 @@ private:
             RECT titleRect{ textRect.left, textRect.top, textRect.right, middle + 1 };
             RECT detailRect{ textRect.left, middle - 1, textRect.right, textRect.bottom };
             SetBkMode(buffer, TRANSPARENT);
-            SetTextColor(buffer, state.running ? settings_.titleColor : RGB(185, 185, 188));
+            const auto backgroundColor = GetPixel(buffer, textRect.left, middle);
+            const auto artistColor = BlendColor(settings_.titleColor,
+                backgroundColor == CLR_INVALID ? GetSysColor(COLOR_3DFACE) : backgroundColor, 24);
+            SetTextColor(buffer, settings_.titleColor);
             SelectObject(buffer, titleFont_);
             DrawTextW(buffer, state.title.c_str(), -1, &titleRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
-            SetTextColor(buffer, state.lyric.empty() ? settings_.artistColor : settings_.lyricColor);
+            SetTextColor(buffer, state.lyric.empty() ? artistColor : settings_.lyricColor);
             SelectObject(buffer, detailFont_);
             const auto& detail = state.lyric.empty() ? state.artist : state.lyric;
             DrawTextW(buffer, detail.c_str(), -1, &detailRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
@@ -574,7 +586,7 @@ private:
         const auto active = enabled && hoverButton_ == index;
         const auto color = !enabled
             ? RGB(105, 105, 108)
-            : active ? settings_.buttonHoverColor : settings_.buttonColor;
+            : active ? BlendColor(settings_.buttonColor, RGB(255, 255, 255), 72) : settings_.buttonColor;
         HPEN pen = CreatePen(PS_SOLID, 1, color);
         HBRUSH iconBrush = CreateSolidBrush(color);
         const auto oldPen = SelectObject(device, pen);

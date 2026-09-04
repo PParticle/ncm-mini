@@ -15,23 +15,16 @@ constexpr wchar_t SettingsWindowClass[] = L"NCMMini.Settings.Window.1";
 constexpr UINT ShowWindowMessage = WM_APP + 1;
 constexpr UINT StopWindowMessage = WM_APP + 2;
 constexpr int WindowWidth = 550;
-constexpr int WindowHeight = 445;
+constexpr int WindowHeight = 365;
 
 enum ControlId
 {
-    ShowCoverId = 101,
-    ShowLyricsId,
-    CoverInsetId,
-    ButtonSizeId,
-    TitleFontDisplayId,
-    TitleFontChooseId,
-    DetailFontDisplayId,
-    DetailFontChooseId,
+    ShowLyricsId = 101,
+    FontDisplayId,
+    FontChooseId,
     TitleColorId,
-    ArtistColorId,
-    LyricColorId,
     ButtonColorId,
-    ButtonHoverColorId,
+    LyricColorId,
     RefreshIntervalId,
     CloseCloudMusicId,
     ConfirmId,
@@ -49,10 +42,7 @@ HWND AddControl(HWND parent, const wchar_t* className, const wchar_t* text, DWOR
 
 std::wstring FontDescription(const FontSettings& font)
 {
-    std::wstring text = font.name + L"  " + std::to_wstring(font.pointSize) + L" \u78c5";
-    if (font.weight >= FW_BOLD) text += L"  \u7c97\u4f53";
-    if (font.italic) text += L"  \u659c\u4f53";
-    return text;
+    return font.name + L"  " + std::to_wstring(font.pointSize) + L" \u78c5";
 }
 
 void SetCheck(HWND window, int id, bool checked)
@@ -92,10 +82,8 @@ COLORREF* ColorByIndex(AppSettings& settings, int index)
     switch (index)
     {
     case 0: return &settings.titleColor;
-    case 1: return &settings.artistColor;
+    case 1: return &settings.buttonColor;
     case 2: return &settings.lyricColor;
-    case 3: return &settings.buttonColor;
-    case 4: return &settings.buttonHoverColor;
     default: return nullptr;
     }
 }
@@ -221,17 +209,12 @@ LRESULT SettingsWindow::HandleMessage(HWND window, UINT message, WPARAM wParam, 
     case WM_COMMAND:
         switch (LOWORD(wParam))
         {
-        case TitleFontChooseId:
-            ChooseFontSetting(true);
-            return 0;
-        case DetailFontChooseId:
-            ChooseFontSetting(false);
+        case FontChooseId:
+            ChooseFontSetting();
             return 0;
         case TitleColorId:
-        case ArtistColorId:
-        case LyricColorId:
         case ButtonColorId:
-        case ButtonHoverColorId:
+        case LyricColorId:
             ChooseColorSetting(LOWORD(wParam) - TitleColorId);
             return 0;
         case ConfirmId:
@@ -246,7 +229,7 @@ LRESULT SettingsWindow::HandleMessage(HWND window, UINT message, WPARAM wParam, 
         }
         break;
     case WM_DRAWITEM:
-        if (wParam >= TitleColorId && wParam <= ButtonHoverColorId)
+        if (wParam >= TitleColorId && wParam <= LyricColorId)
         {
             DrawColorButton(*reinterpret_cast<DRAWITEMSTRUCT*>(lParam));
             return TRUE;
@@ -262,47 +245,33 @@ void SettingsWindow::CreateControls(HWND window)
     SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(metrics), &metrics, 0);
     controlFont_ = CreateFontIndirectW(&metrics.lfMessageFont);
 
-    AddControl(window, L"BUTTON", L"\u663e\u793a\u5185\u5bb9", BS_GROUPBOX, 12, 10, 526, 75);
-    AddControl(window, L"BUTTON", L"\u663e\u793a\u5c01\u9762", BS_AUTOCHECKBOX | WS_TABSTOP, 28, 29, 120, 22, ShowCoverId);
-    AddControl(window, L"BUTTON", L"\u663e\u793a\u5b9e\u65f6\u6b4c\u8bcd", BS_AUTOCHECKBOX | WS_TABSTOP, 166, 29, 150, 22, ShowLyricsId);
-    AddControl(window, L"STATIC", L"\u5c01\u9762\u8fb9\u8ddd\uff1a", SS_LEFT, 28, 57, 76, 20);
-    AddControl(window, L"EDIT", L"", ES_NUMBER | ES_AUTOHSCROLL | WS_BORDER | WS_TABSTOP, 102, 54, 45, 23, CoverInsetId, WS_EX_CLIENTEDGE);
-    AddControl(window, L"STATIC", L"\u50cf\u7d20 (0-8)", SS_LEFT, 154, 57, 90, 20);
-    AddControl(window, L"STATIC", L"\u6309\u94ae\u5927\u5c0f\uff1a", SS_LEFT, 280, 57, 76, 20);
-    AddControl(window, L"EDIT", L"", ES_NUMBER | ES_AUTOHSCROLL | WS_BORDER | WS_TABSTOP, 354, 54, 45, 23, ButtonSizeId, WS_EX_CLIENTEDGE);
-    AddControl(window, L"STATIC", L"\u50cf\u7d20 (24-40)", SS_LEFT, 406, 57, 108, 20);
+    AddControl(window, L"BUTTON", L"\u663e\u793a\u5185\u5bb9", BS_GROUPBOX, 12, 10, 526, 56);
+    AddControl(window, L"BUTTON", L"\u663e\u793a\u5b9e\u65f6\u6b4c\u8bcd", BS_AUTOCHECKBOX | WS_TABSTOP, 28, 31, 150, 22, ShowLyricsId);
 
-    AddControl(window, L"BUTTON", L"\u5b57\u4f53", BS_GROUPBOX, 12, 92, 526, 90);
-    AddControl(window, L"STATIC", L"\u6807\u9898\u5b57\u4f53\uff1a", SS_LEFT, 28, 118, 76, 20);
-    AddControl(window, L"EDIT", L"", ES_READONLY | ES_AUTOHSCROLL | WS_BORDER, 102, 113, 318, 24, TitleFontDisplayId, WS_EX_CLIENTEDGE);
-    AddControl(window, L"BUTTON", L"\u9009\u62e9...", BS_PUSHBUTTON | WS_TABSTOP, 432, 112, 86, 26, TitleFontChooseId);
-    AddControl(window, L"STATIC", L"\u526f\u884c\u5b57\u4f53\uff1a", SS_LEFT, 28, 151, 76, 20);
-    AddControl(window, L"EDIT", L"", ES_READONLY | ES_AUTOHSCROLL | WS_BORDER, 102, 146, 318, 24, DetailFontDisplayId, WS_EX_CLIENTEDGE);
-    AddControl(window, L"BUTTON", L"\u9009\u62e9...", BS_PUSHBUTTON | WS_TABSTOP, 432, 145, 86, 26, DetailFontChooseId);
+    AddControl(window, L"BUTTON", L"\u5b57\u4f53", BS_GROUPBOX, 12, 73, 526, 65);
+    AddControl(window, L"STATIC", L"\u5b57\u4f53\uff1a", SS_LEFT, 28, 99, 56, 20);
+    AddControl(window, L"EDIT", L"", ES_READONLY | ES_AUTOHSCROLL | WS_BORDER, 86, 94, 334, 24, FontDisplayId, WS_EX_CLIENTEDGE);
+    AddControl(window, L"BUTTON", L"\u9009\u62e9...", BS_PUSHBUTTON | WS_TABSTOP, 432, 93, 86, 26, FontChooseId);
 
-    AddControl(window, L"BUTTON", L"\u989c\u8272", BS_GROUPBOX, 12, 189, 526, 118);
-    AddControl(window, L"STATIC", L"\u6807\u9898\uff1a", SS_LEFT, 28, 217, 56, 20);
-    AddControl(window, L"BUTTON", L"", BS_OWNERDRAW | WS_TABSTOP, 86, 211, 92, 25, TitleColorId);
-    AddControl(window, L"STATIC", L"\u6b4c\u624b\uff1a", SS_LEFT, 196, 217, 56, 20);
-    AddControl(window, L"BUTTON", L"", BS_OWNERDRAW | WS_TABSTOP, 254, 211, 92, 25, ArtistColorId);
-    AddControl(window, L"STATIC", L"\u6b4c\u8bcd\uff1a", SS_LEFT, 364, 217, 56, 20);
-    AddControl(window, L"BUTTON", L"", BS_OWNERDRAW | WS_TABSTOP, 422, 211, 92, 25, LyricColorId);
-    AddControl(window, L"STATIC", L"\u6309\u94ae\uff1a", SS_LEFT, 28, 258, 56, 20);
-    AddControl(window, L"BUTTON", L"", BS_OWNERDRAW | WS_TABSTOP, 86, 252, 92, 25, ButtonColorId);
-    AddControl(window, L"STATIC", L"\u6309\u94ae\u60ac\u505c\uff1a", SS_LEFT, 196, 258, 76, 20);
-    AddControl(window, L"BUTTON", L"", BS_OWNERDRAW | WS_TABSTOP, 276, 252, 92, 25, ButtonHoverColorId);
-    AddControl(window, L"STATIC", L"\u70b9\u51fb\u8272\u5757\u53ef\u4fee\u6539\u989c\u8272\u3002", SS_LEFT, 28, 283, 250, 18);
+    AddControl(window, L"BUTTON", L"\u989c\u8272", BS_GROUPBOX, 12, 145, 526, 83);
+    AddControl(window, L"STATIC", L"\u6807\u9898\uff1a", SS_LEFT, 28, 173, 56, 20);
+    AddControl(window, L"BUTTON", L"", BS_OWNERDRAW | WS_TABSTOP, 86, 167, 92, 25, TitleColorId);
+    AddControl(window, L"STATIC", L"\u6309\u94ae\uff1a", SS_LEFT, 196, 173, 56, 20);
+    AddControl(window, L"BUTTON", L"", BS_OWNERDRAW | WS_TABSTOP, 254, 167, 92, 25, ButtonColorId);
+    AddControl(window, L"STATIC", L"\u6b4c\u8bcd\uff1a", SS_LEFT, 364, 173, 56, 20);
+    AddControl(window, L"BUTTON", L"", BS_OWNERDRAW | WS_TABSTOP, 422, 167, 92, 25, LyricColorId);
+    AddControl(window, L"STATIC", L"\u6807\u9898\u4f7f\u7528\u7c97\u4f53\uff0c\u6b4c\u624b\u4f7f\u7528\u540c\u8272\u6de1\u5316\u7684\u5e38\u89c4\u5b57\u4f53\u3002", SS_LEFT, 28, 203, 360, 18);
 
-    AddControl(window, L"BUTTON", L"\u884c\u4e3a\u4e0e\u66f4\u65b0", BS_GROUPBOX, 12, 314, 526, 76);
-    AddControl(window, L"STATIC", L"\u5a92\u4f53\u5237\u65b0\u95f4\u9694\uff1a", SS_LEFT, 28, 339, 106, 20);
-    AddControl(window, L"EDIT", L"", ES_NUMBER | ES_AUTOHSCROLL | WS_BORDER | WS_TABSTOP, 134, 336, 58, 23, RefreshIntervalId, WS_EX_CLIENTEDGE);
-    AddControl(window, L"STATIC", L"\u6beb\u79d2 (50-2000)", SS_LEFT, 200, 339, 125, 20);
+    AddControl(window, L"BUTTON", L"\u884c\u4e3a\u4e0e\u66f4\u65b0", BS_GROUPBOX, 12, 235, 526, 76);
+    AddControl(window, L"STATIC", L"\u5a92\u4f53\u5237\u65b0\u95f4\u9694\uff1a", SS_LEFT, 28, 260, 106, 20);
+    AddControl(window, L"EDIT", L"", ES_NUMBER | ES_AUTOHSCROLL | WS_BORDER | WS_TABSTOP, 134, 257, 58, 23, RefreshIntervalId, WS_EX_CLIENTEDGE);
+    AddControl(window, L"STATIC", L"\u6beb\u79d2 (50-2000)", SS_LEFT, 200, 260, 125, 20);
     AddControl(window, L"BUTTON", L"\u9000\u51fa NCM Mini \u65f6\u540c\u65f6\u5173\u95ed\u7f51\u6613\u4e91\u97f3\u4e50", BS_AUTOCHECKBOX | WS_TABSTOP,
-        28, 362, 310, 22, CloseCloudMusicId);
+        28, 283, 310, 22, CloseCloudMusicId);
 
-    AddControl(window, L"BUTTON", L"\u786e\u5b9a", BS_DEFPUSHBUTTON | WS_TABSTOP, 268, 405, 82, 28, ConfirmId);
-    AddControl(window, L"BUTTON", L"\u53d6\u6d88", BS_PUSHBUTTON | WS_TABSTOP, 360, 405, 82, 28, CancelId);
-    AddControl(window, L"BUTTON", L"\u5e94\u7528", BS_PUSHBUTTON | WS_TABSTOP, 452, 405, 82, 28, ApplyId);
+    AddControl(window, L"BUTTON", L"\u786e\u5b9a", BS_DEFPUSHBUTTON | WS_TABSTOP, 268, 325, 82, 28, ConfirmId);
+    AddControl(window, L"BUTTON", L"\u53d6\u6d88", BS_PUSHBUTTON | WS_TABSTOP, 360, 325, 82, 28, CancelId);
+    AddControl(window, L"BUTTON", L"\u5e94\u7528", BS_PUSHBUTTON | WS_TABSTOP, 452, 325, 82, 28, ApplyId);
     ApplyControlFont(window);
 }
 
@@ -316,15 +285,11 @@ void SettingsWindow::ApplyControlFont(HWND window) const
 
 void SettingsWindow::LoadControls()
 {
-    SetCheck(window_, ShowCoverId, working_.showCover);
     SetCheck(window_, ShowLyricsId, working_.showLyrics);
     SetCheck(window_, CloseCloudMusicId, working_.closeCloudMusicOnExit);
-    SetInteger(window_, CoverInsetId, working_.coverInset);
-    SetInteger(window_, ButtonSizeId, working_.buttonSize);
     SetInteger(window_, RefreshIntervalId, working_.refreshIntervalMs);
-    SetDlgItemTextW(window_, TitleFontDisplayId, FontDescription(working_.titleFont).c_str());
-    SetDlgItemTextW(window_, DetailFontDisplayId, FontDescription(working_.detailFont).c_str());
-    for (int id = TitleColorId; id <= ButtonHoverColorId; ++id)
+    SetDlgItemTextW(window_, FontDisplayId, FontDescription(working_.font).c_str());
+    for (int id = TitleColorId; id <= LyricColorId; ++id)
     {
         InvalidateRect(GetDlgItem(window_, id), nullptr, TRUE);
     }
@@ -333,17 +298,10 @@ void SettingsWindow::LoadControls()
 bool SettingsWindow::ReadControls()
 {
     bool valid = true;
-    const auto coverInset = ReadInteger(window_, CoverInsetId, 0, 8, L"\u5c01\u9762\u8fb9\u8ddd", valid);
-    if (!valid) return false;
-    const auto buttonSize = ReadInteger(window_, ButtonSizeId, 24, 40, L"\u6309\u94ae\u5927\u5c0f", valid);
-    if (!valid) return false;
     const auto refresh = ReadInteger(window_, RefreshIntervalId, 50, 2000, L"\u5a92\u4f53\u5237\u65b0\u95f4\u9694", valid);
     if (!valid) return false;
-    working_.showCover = GetCheck(window_, ShowCoverId);
     working_.showLyrics = GetCheck(window_, ShowLyricsId);
     working_.closeCloudMusicOnExit = GetCheck(window_, CloseCloudMusicId);
-    working_.coverInset = coverInset;
-    working_.buttonSize = buttonSize;
     working_.refreshIntervalMs = refresh;
     return true;
 }
@@ -361,16 +319,15 @@ bool SettingsWindow::Apply()
     return true;
 }
 
-void SettingsWindow::ChooseFontSetting(bool title)
+void SettingsWindow::ChooseFontSetting()
 {
-    auto& font = title ? working_.titleFont : working_.detailFont;
+    auto& font = working_.font;
     LOGFONTW logFont{};
     const HDC device = GetDC(window_);
     const auto dpi = GetDeviceCaps(device, LOGPIXELSY);
     ReleaseDC(window_, device);
     logFont.lfHeight = -MulDiv(font.pointSize, dpi, 72);
-    logFont.lfWeight = font.weight;
-    logFont.lfItalic = font.italic ? TRUE : FALSE;
+    logFont.lfWeight = FW_NORMAL;
     wcsncpy(logFont.lfFaceName, font.name.c_str(), LF_FACESIZE - 1);
     logFont.lfFaceName[LF_FACESIZE - 1] = L'\0';
     CHOOSEFONTW choice{};
@@ -378,13 +335,11 @@ void SettingsWindow::ChooseFontSetting(bool title)
     choice.hwndOwner = window_;
     choice.lpLogFont = &logFont;
     choice.iPointSize = font.pointSize * 10;
-    choice.Flags = CF_SCREENFONTS | CF_INITTOLOGFONTSTRUCT | CF_FORCEFONTEXIST;
+    choice.Flags = CF_SCREENFONTS | CF_INITTOLOGFONTSTRUCT | CF_FORCEFONTEXIST | CF_NOSTYLESEL;
     if (!ChooseFontW(&choice)) return;
     font.name = logFont.lfFaceName;
     font.pointSize = std::clamp(static_cast<int>(choice.iPointSize / 10), 6, 24);
-    font.weight = std::clamp(static_cast<int>(logFont.lfWeight), 100, 900);
-    font.italic = logFont.lfItalic != FALSE;
-    SetDlgItemTextW(window_, title ? TitleFontDisplayId : DetailFontDisplayId, FontDescription(font).c_str());
+    SetDlgItemTextW(window_, FontDisplayId, FontDescription(font).c_str());
 }
 
 void SettingsWindow::ChooseColorSetting(int index)

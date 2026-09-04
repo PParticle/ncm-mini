@@ -32,7 +32,7 @@ private:
     void LoadControls();
     bool ReadControls();
     bool Apply();
-    void ChooseFontSetting(bool title);
+    void ChooseFontSetting();
     void ChooseColorSetting(int index);
     void DrawColorButton(const DRAWITEMSTRUCT& item) const;
     void CenterWindow() const;
