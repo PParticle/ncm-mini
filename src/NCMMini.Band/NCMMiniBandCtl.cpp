@@ -1,5 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <objbase.h>
 #include <shobjidl.h>
 
 #include <cwchar>
@@ -41,6 +42,8 @@ int wmain(int argumentCount, wchar_t** arguments)
     auto result = CoCreateInstance(CLSID_TrayDeskBand, nullptr, CLSCTX_LOCAL_SERVER, IID_PPV_ARGS(&tray));
     if (SUCCEEDED(result))
     {
+        AllowSetForegroundWindow(ASFW_ANY);
+        CoAllowSetForegroundWindow(tray, nullptr);
         if (_wcsicmp(arguments[1], L"show") == 0)
         {
             tray->DeskBandRegistrationChanged();

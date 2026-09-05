@@ -142,6 +142,45 @@ if ($registration.ExitCode -ne 0) {
 $controller = Join-Path $InstallDirectory 'NCMMiniBandCtl.exe'
 & $controller refresh 2>$null | Out-Null
 
+function Test-DeskBandShown {
+    & $controller status 2>$null | Out-Null
+    return $LASTEXITCODE -eq 0
+}
+
+function Show-DeskBand {
+    & $controller show 2>$null | Out-Null
+    Start-Sleep -Milliseconds 500
+    return (Test-DeskBandShown)
+}
+
+$deskBandShown = Test-DeskBandShown
+if (-not $deskBandShown) {
+    $deskBandShown = Show-DeskBand
+}
+if (-not $deskBandShown -and -not $NoExplorerRestart) {
+    Write-Host 'Restarting Explorer once to load the new DeskBand...'
+    Get-Process explorer -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Sleep -Seconds 1
+    Start-Process explorer.exe
+    Start-Sleep -Seconds 3
+    & $controller refresh 2>$null | Out-Null
+    $deskBandShown = Show-DeskBand
+}
+if (-not $deskBandShown) {
+    $message = if ($NoExplorerRestart) {
+        'NCM Mini 已注册，但需要重启 Windows 资源管理器后才能添加到任务栏。'
+    } else {
+        '未能把 NCM Mini 添加到任务栏。请在弹出的确认窗口中选择“是”，然后重新运行安装程序。'
+    }
+    try {
+        $shell = New-Object -ComObject WScript.Shell
+        [void]$shell.Popup($message, 0, 'NCM Mini 安装', 0x1030)
+    } catch {
+        Write-Warning $message
+    }
+    throw $message
+}
+
 $programs = [Environment]::GetFolderPath('Programs')
 $shortcutPath = Join-Path $programs 'NCM Mini.lnk'
 $hostArguments = @()
@@ -159,23 +198,6 @@ $shortcut.Save()
 
 if (-not $NoStart) {
     Start-Process (Join-Path $InstallDirectory 'NCMMini.exe') -ArgumentList $hostArguments
-    Start-Sleep -Seconds 2
-    & $controller status 2>$null | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        if ($NoExplorerRestart) {
-            Write-Warning 'Explorer must be restarted once before NCM Mini can appear.'
-        } else {
-            Write-Host 'Restarting Explorer once to load the new DeskBand...'
-            Get-Process explorer -ErrorAction SilentlyContinue | Stop-Process -Force
-            Start-Sleep -Seconds 1
-            Start-Process explorer.exe
-            Start-Sleep -Seconds 3
-            & $controller show 2>$null | Out-Null
-            if (-not (Get-Process NCMMini -ErrorAction SilentlyContinue)) {
-                Start-Process (Join-Path $InstallDirectory 'NCMMini.exe') -ArgumentList $hostArguments
-            }
-        }
-    }
 }
 
 Write-Host "NCM Mini installed for the current user: $InstallDirectory"
