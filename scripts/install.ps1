@@ -165,10 +165,20 @@ function Test-DeskBandShown {
     return $LASTEXITCODE -eq 0
 }
 
+function Wait-DeskBandShown {
+    $deadline = [DateTime]::UtcNow.AddSeconds(10)
+    do {
+        if (Test-DeskBandShown) {
+            return $true
+        }
+        Start-Sleep -Milliseconds 250
+    } while ([DateTime]::UtcNow -lt $deadline)
+    return $false
+}
+
 function Show-DeskBand {
     & $controller show 2>$null | Out-Null
-    Start-Sleep -Milliseconds 500
-    return (Test-DeskBandShown)
+    return (Wait-DeskBandShown)
 }
 
 $deskBandShown = Test-DeskBandShown
