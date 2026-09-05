@@ -36,7 +36,10 @@ public:
         }
         PipeServer pipe([this](BandCommand command) { HandleCommand(command); });
         pipe.Start();
-        RunBandController(L"show");
+        if (options_.showBand)
+        {
+            RunBandController(L"show");
+        }
         if (options_.launchCloudMusic)
         {
             player_.TryLaunch();

@@ -55,15 +55,8 @@ int wmain(int argumentCount, wchar_t** arguments)
         }
         else if (_wcsicmp(arguments[1], L"hide") == 0)
         {
-            result = tray->IsDeskBandShown(CLSID_NCMMiniDeskBand);
-            if (result == S_OK)
-            {
-                result = tray->HideDeskBand(CLSID_NCMMiniDeskBand);
-            }
-            else if (result == S_FALSE)
-            {
-                result = S_OK;
-            }
+            result = tray->HideDeskBand(CLSID_NCMMiniDeskBand);
+            if (result == S_FALSE) result = S_OK;
         }
         else if (_wcsicmp(arguments[1], L"refresh") == 0)
         {

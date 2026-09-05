@@ -18,6 +18,7 @@ struct AppOptions
     bool launchCloudMusic = true;
     bool closeCloudMusicOnExit = true;
     bool showLyrics = true;
+    bool showBand = true;
 };
 
 struct TrackInfo

@@ -137,6 +137,10 @@ AppOptions ParseOptions(int argumentCount, wchar_t** arguments)
         {
             options.showLyrics = false;
         }
+        else if (argument == L"--no-show-band")
+        {
+            options.showBand = false;
+        }
     }
     return options;
 }

@@ -142,6 +142,24 @@ if ($registration.ExitCode -ne 0) {
 $controller = Join-Path $InstallDirectory 'NCMMiniBandCtl.exe'
 & $controller refresh 2>$null | Out-Null
 
+$programs = [Environment]::GetFolderPath('Programs')
+$shortcutPath = Join-Path $programs 'NCM Mini.lnk'
+$shell = New-Object -ComObject WScript.Shell
+$shortcut = $shell.CreateShortcut($shortcutPath)
+$shortcut.TargetPath = Join-Path $InstallDirectory 'NCMMini.exe'
+$shortcut.WorkingDirectory = $InstallDirectory
+if ($CloudMusicPath) {
+    $shortcut.Arguments = "--cloudmusic `"$CloudMusicPath`""
+}
+$shortcut.Save()
+
+$startedHost = $null
+if (-not $NoStart) {
+    $hostArguments = "--cloudmusic `"$CloudMusicPath`" --no-show-band"
+    $startedHost = Start-Process (Join-Path $InstallDirectory 'NCMMini.exe') -ArgumentList $hostArguments -PassThru
+    Start-Sleep -Milliseconds 500
+}
+
 function Test-DeskBandShown {
     & $controller status 2>$null | Out-Null
     return $LASTEXITCODE -eq 0
@@ -167,6 +185,9 @@ if (-not $deskBandShown -and -not $NoExplorerRestart) {
     $deskBandShown = Show-DeskBand
 }
 if (-not $deskBandShown) {
+    if ($startedHost -and -not $startedHost.HasExited) {
+        $startedHost | Stop-Process -Force -ErrorAction SilentlyContinue
+    }
     $message = if ($NoExplorerRestart) {
         'NCM Mini 已注册，但需要重启 Windows 资源管理器后才能添加到任务栏。'
     } else {
@@ -179,25 +200,6 @@ if (-not $deskBandShown) {
         Write-Warning $message
     }
     throw $message
-}
-
-$programs = [Environment]::GetFolderPath('Programs')
-$shortcutPath = Join-Path $programs 'NCM Mini.lnk'
-$hostArguments = @()
-if ($CloudMusicPath) {
-    $hostArguments = @('--cloudmusic', $CloudMusicPath)
-}
-$shell = New-Object -ComObject WScript.Shell
-$shortcut = $shell.CreateShortcut($shortcutPath)
-$shortcut.TargetPath = Join-Path $InstallDirectory 'NCMMini.exe'
-$shortcut.WorkingDirectory = $InstallDirectory
-if ($CloudMusicPath) {
-    $shortcut.Arguments = "--cloudmusic `"$CloudMusicPath`""
-}
-$shortcut.Save()
-
-if (-not $NoStart) {
-    Start-Process (Join-Path $InstallDirectory 'NCMMini.exe') -ArgumentList $hostArguments
 }
 
 Write-Host "NCM Mini installed for the current user: $InstallDirectory"

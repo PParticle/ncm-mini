@@ -53,6 +53,38 @@ static COLORREF BlendColor(COLORREF source, COLORREF target, int targetPercent)
         blend(GetBValue(source), GetBValue(target)));
 }
 
+static void HideDeskBandAsync()
+{
+    std::wstring modulePath(32768, L'\0');
+    const auto length = GetModuleFileNameW(moduleHandle, modulePath.data(), static_cast<DWORD>(modulePath.size()));
+    if (length == 0 || length >= modulePath.size())
+    {
+        return;
+    }
+    modulePath.resize(length);
+    const auto separator = modulePath.find_last_of(L"\\/");
+    if (separator == std::wstring::npos)
+    {
+        return;
+    }
+    const auto controller = modulePath.substr(0, separator + 1) + L"NCMMiniBandCtl.exe";
+    if (GetFileAttributesW(controller.c_str()) == INVALID_FILE_ATTRIBUTES)
+    {
+        return;
+    }
+
+    std::wstring commandLine = L"\"" + controller + L"\" hide";
+    STARTUPINFOW startup{};
+    startup.cb = sizeof(startup);
+    PROCESS_INFORMATION process{};
+    if (CreateProcessW(controller.c_str(), commandLine.data(), nullptr, nullptr, FALSE,
+        CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process))
+    {
+        CloseHandle(process.hThread);
+        CloseHandle(process.hProcess);
+    }
+}
+
 struct PlayerState
 {
     bool running = false;
@@ -694,7 +726,14 @@ private:
         }
         else if (selection == ExitMenuId)
         {
-            QueueCommand(ncmmini::Command::Exit);
+            if (connected_)
+            {
+                QueueCommand(ncmmini::Command::Exit);
+            }
+            else
+            {
+                HideDeskBandAsync();
+            }
         }
     }
 
